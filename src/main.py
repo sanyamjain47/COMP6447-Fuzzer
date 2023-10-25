@@ -1,15 +1,12 @@
 import sys
 import json
 from pwn import *
-from enum import Enum
+import file_type
 
-
-class TemplateTypes(Enum):
-    CSV = "csv"
-    JSON = "json"
 
 def run_program(path: str, payload: str):
     p = process(path)
+    payload = payload + "\n"
     p.sendline(payload.encode())
     print(p.recvall())
     p.close()
@@ -18,24 +15,22 @@ def run_program(path: str, payload: str):
 if __name__ == "__main__":
     
     # print(sys.argv)
-    if (len(sys.argv) != 4):
-        print(f"Usage: python3 {sys.argv[0]} <Binary Path> <Template Path> <Type>")
+    if (len(sys.argv) != 3):
+        print(f"Usage: python3 main,.py <Binary Path> <Template Path>")
         exit()
 
     bin_path = sys.argv[1]
     temp_path = sys.argv[2]
-    bin_type = sys.argv[3]
+    if not file_type.check_file(bin_path,'x') or not file_type.check_file(temp_path,'r'):
+        exit()
+    
     payload = ""
 
-    with open(temp_path, "r") as f:
-        if (bin_type == TemplateTypes.CSV.value):
-            rows = f.read().split("\n")
-            header = rows[0]
-            print(header)
-            payload = header + f"\n {','.join(['A' for _ in range(len(header))])}\n\n"
-        elif (bin_type == TemplateTypes.JSON.value):
-            data = json.load(f)
-            payload = {k: "A" for k in data.keys()}
+    payload = file_type.read_and_determine_data(temp_path)
+    print(payload)
+    if isinstance(payload, dict):
+        payload = json.dumps(payload)
+
 
     run_program(bin_path, payload)
 
