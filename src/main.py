@@ -12,9 +12,9 @@ def run_program(path: str, payload: str):
     print(p.recvall())
 
     # detect whether error of interest, e.g. SIGSEV, 
-    error = 1 # for now
+    error = 1 # for now 
     if (error):
-        with open("./bad.txt", "wb+") as f:
+        with open("./bad.txt", "wb+") as f: # OR p.log_file()
             f.write(f"ERROR --> input: {payload}".encode())
 
     p.close()
@@ -46,5 +46,5 @@ if __name__ == "__main__":
         run_program(bin_path, payload)
         counter += 1
 
-    # if (): print("Found bad input.")
+    if (os.stat("bad.txt").st_size != 0): print("Found bad input.")
         
