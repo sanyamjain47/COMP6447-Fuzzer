@@ -69,13 +69,18 @@ def fuzz_json(data: dict) -> dict:
         - data: The dict of a input JSON.
     """
 
-    # if (json is empty): populate
+    if not data: 
+        data = {
+        "data": "AAAA"
+        }
 
     # Start generating fuzzed files
     mutators = [
         strat1,
         strat2,
         strat3,
+        strat4,
+        strat5,
     ]
     mutator = random.choice(mutators)
     print(mutator)
@@ -136,8 +141,29 @@ def strat4(data: dict):
     update_nested_dict(data, list(key_tup), updated_value)
     return data
 
+def strat5(data: dict):
+    """Strategy 5: Large Amount of Keys
+    def strat5(data: dict):
+    """
+    for i in range(1000):
+        data[f"key{i}"] = f"value{i}"
+    return data
+
+# def strat6(data: dict):
+#     """Strategy 6: Trailing Comma
+#     def strat6(data: dict):
+    
+#     Trailing commas are not allowed in standard JSON, 
+#     tests how JSON parsers handle non-standard input
+#     """
+#     key = list(data)[-1]
+
+#     if (isinstance(str)): data[key] += ","
+#     return data
+    
+
 if __name__ == "__main__":
-    print(json.dumps(strat4({
+    print(strat5({
         "len": 12,
         "input": "AAAABBBBCCCC",
         "more_data": ["a", "bb"],
@@ -151,4 +177,4 @@ if __name__ == "__main__":
                 "more_data": ["a", "bb"],
             },
         }
-    })))
+    }))
