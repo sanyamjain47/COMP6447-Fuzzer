@@ -129,7 +129,7 @@ def generate_json_fuzzed_output(df, q):
         strat2,
         strat3,
         strat4,
-        # strat5,
+        strat5,
         strat7,
         strat9,
     ]
@@ -137,12 +137,12 @@ def generate_json_fuzzed_output(df, q):
 
     for r in range(1, len(json_mutator) + 1):  # r ranges from 1 to the number of base mutators
         for mutator_combination in itertools.combinations(json_mutator, r):  # All combinations of size r
-            fuzzed_output = df
-            for mutator in mutator_combination:
-                fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
-            
-            json_string = json.dumps(fuzzed_output)
+            for i in range(10):
+                fuzzed_output = df
+                for mutator in mutator_combination:
+                    fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                
+                json_string = json.dumps(fuzzed_output)
 
-            q.put(json_string)
+                q.put(json_string)
 
-    
