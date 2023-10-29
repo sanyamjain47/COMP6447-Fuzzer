@@ -31,8 +31,8 @@ def start_json(s: str, binary_path: str):
 
     # Start generating inputs in a separate thread
     # START THIS IF NEEDED AFTER
-    fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input))
-    fuzz_generator_thread.start()
+    # fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input))
+    # fuzz_generator_thread.start()
 
     jsonfuzz_generator_thread = Thread(target=generate_json_fuzzed_output, args=(s, fuzzed_input))
     jsonfuzz_generator_thread.start()
@@ -43,6 +43,6 @@ def start_json(s: str, binary_path: str):
 
     # Wait for both threads to finish
     jsonfuzz_generator_thread.join()
-    fuzz_generator_thread.join()
+    # fuzz_generator_thread.join()
     binary_checker_thread.join()
 
