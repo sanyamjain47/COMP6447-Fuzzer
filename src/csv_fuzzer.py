@@ -3,6 +3,7 @@ import itertools
 import random
 from io import StringIO
 import csv
+
 ##########################
 ## CSV SPECIFIC METHODS ##
 ##########################
@@ -53,9 +54,6 @@ def nested_quotes(lst_lst):
     lst_lst[row][col] = '"' + str(lst_lst[row][col]) + '"'
     return lst_lst
 
-# Adding rows or columns in a list-of-lists can be resource-intensive due to the need to copy existing data.
-# Here's a simple example for adding rows:
-
 def add_many_rows(lst_lst):
     num_rows = len(lst_lst)
     num_new_rows = random.randint(1000, 5000)
@@ -91,12 +89,7 @@ def generate_csv_fuzzed_output(df):
                 fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
                 # ADD THIS TO QUEUE # TODO
             csv_string = list_of_lists_to_csv(fuzzed_output)
-            if len(mutator_combination) == 1:
-                print("***")
-                print(csv_string)
-                print("***")
             all_mets.add(mutator_combination)
-    print(all_mets)
 
 # Test it out
 if __name__ == "__main__":
@@ -108,7 +101,5 @@ if __name__ == "__main__":
     ['Charlie', 45, 'Teacher'],
     ['David', 23, 'Artist']
 ]   
-
-    print(df)
 
     generate_csv_fuzzed_output(df)
