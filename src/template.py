@@ -83,7 +83,8 @@ def strat1(data: dict):
 
     # ensure different value for duplicate
     payload = "AAAA"
-    if isinstance(data[key], str): payload = data[key] + "A"
+    if isinstance(data[key], str):
+        payload = data[key] + "A"
     return data[key].append(payload)
 
 # Strategy 2: Nesting
@@ -96,6 +97,7 @@ def strat2(data: dict):
     return data
 
 # Strategy 3: Long Strings
+# find a random string field and edit value to long string
 def strat3(data: dict):
     keys_to_check = list(data.keys())
 
@@ -103,10 +105,11 @@ def strat3(data: dict):
         current_key = random.choice(keys_to_check)
         value = data.get(current_key)
 
-        if isinstance(value, str): 
+        if isinstance(value, str):
             data[current_key] = "A" * 100
             break
-        elif isinstance(value, dict): keys_to_check.extend(value.keys())
+        elif isinstance(value, dict):
+            keys_to_check.extend(value.keys())
 
         keys_to_check.remove(current_key)
         
