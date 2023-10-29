@@ -89,15 +89,10 @@ def fuzz_json(data: dict) -> dict:
     return mutator(data)
 
 
-# Strategy 1: Duplicate Keys
 def strat1(data: dict):
-    key = random.choice(list(data.keys()))
-
-    # ensure different value for duplicate
-    payload = "AAAA"
-    if isinstance(data[key], str):
-        payload = data[key] + "A"
-    return data[key].append(payload)
+    """Add new key"""
+    data["AAAA"] = "AAAA"
+    return data
 
 # Strategy 2: Nesting
 def strat2(data: dict):
@@ -218,4 +213,4 @@ if __name__ == "__main__":
                 "more_data": ["a", "bb"],
             },
         }
-    }))
+    })))

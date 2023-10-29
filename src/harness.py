@@ -17,6 +17,7 @@ def run_binary_and_check_segfault(binary_path, q):
                 if e.returncode == -11:
                     print(f"An error occurred with exit code: {e.returncode}")
                     generate_report(input_data,e)
+                    print(f"The input the caused the error has been put in bad.txt")
                     sys.exit()
 
         else:

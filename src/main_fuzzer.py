@@ -43,6 +43,6 @@ def start_json(s: str, binary_path: str):
 
     # Wait for both threads to finish
     jsonfuzz_generator_thread.join()
-    fuzz_generator_thread.join()
+    # fuzz_generator_thread.join()
     binary_checker_thread.join()
 
