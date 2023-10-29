@@ -9,7 +9,7 @@ import json
 import random
 import os
 
-from library.helpers import get_dict_all_keys_of_type, update_nested_dict
+from library.helpers import get_dict_all_keys, get_dict_all_keys_of_type, update_nested_dict
 
 def fuzz_csv(input_csv_file, output_dir, num_fuzzed_files=10):
     """
@@ -81,6 +81,8 @@ def fuzz_json(data: dict) -> dict:
         strat3,
         strat4,
         strat5,
+        strat7,
+        strat9,
     ]
     mutator = random.choice(mutators)
     print(mutator)
@@ -162,8 +164,47 @@ def strat5(data: dict):
 #     return data
     
 
+
+def strat7(data: dict):
+    """Strategy 7: send null values
+        def strat7(data: dict):
+    """
+    keys_to_check = get_dict_all_keys(data)
+    key_tup = random.choice(keys_to_check)
+    updated_value = None
+    update_nested_dict(data, list(key_tup), updated_value)
+    return data
+
+def strat9(data: dict):
+    """Strategy 9: send null-like values
+        def strat9(data: dict):
+    """
+    keys_to_check = get_dict_all_keys(data)
+    key_tup = random.choice(keys_to_check)
+    value = data
+    print(key_tup)
+    for key in key_tup:
+        value = value[key]
+    if isinstance(value, list):
+        updated_value = []
+    elif isinstance(value, str):
+        updated_value = ""
+    elif isinstance(value, int):
+        updated_value = 0
+    elif isinstance(value, dict):
+        updated_value = {}
+    elif isinstance(value, float):
+        updated_value = 0.0
+    else:
+        updated_value = None
+
+    update_nested_dict(data, list(key_tup), updated_value)
+    return data
+
+
+
 if __name__ == "__main__":
-    print(strat5({
+    print(json.dumps(strat9({
         "len": 12,
         "input": "AAAABBBBCCCC",
         "more_data": ["a", "bb"],
