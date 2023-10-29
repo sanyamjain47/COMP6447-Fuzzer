@@ -13,7 +13,8 @@ def get_dict_all_keys(data: dict) -> list[tuple[str]]:
     for k, v in data.items():
         if isinstance(v, dict):
             all_keys += [(k, *keys) for keys in get_dict_all_keys(v)]
-        all_keys.append((k,))
+        else:
+            all_keys.append((k,))
     return all_keys
 
 
@@ -33,7 +34,7 @@ def get_dict_all_keys_of_type(data: dict, t: type):
                 if isinstance(val, t):
                     all_keys.append((k,))
                     break
-        if isinstance(v, t):
+        elif isinstance(v, t):
             all_keys.append((k,))
     return all_keys
 
