@@ -2,23 +2,7 @@ import sys
 import json
 from pwn import *
 import file_type
-
-
-def run_program(path: str, payload: str):
-    p = process(path)
-    # payload = payload + "\n"
-    payload = "AAAAA,AAAAAAA.AAAAAAAAA,AAAAAA,AAAAAAAAA"
-    p.sendline(payload.encode())
-    print(p.recvall())
-
-    # detect whether error of interest, e.g. SIGSEV, 
-    error = 1 # for now 
-    if (error):
-        with open("./bad.txt", "wb+") as f: # OR p.log_file()
-            f.write(f"ERROR --> input: {payload}".encode())
-
-    p.close()
-
+from main_fuzzer import start_csv
 
 if __name__ == "__main__":
     
@@ -34,17 +18,8 @@ if __name__ == "__main__":
     
     payload = ""
 
-    payload = file_type.read_and_determine_data(temp_path)
-    print(payload)
-    if isinstance(payload, dict):
-        payload = json.dumps(payload)
+    payload,type = file_type.read_and_determine_data(temp_path)
+    # print(payload)
+    if type == 'CSV':
+        start_csv(payload, bin_path)
 
-
-    print("Fuzzing this thing...")
-    counter = 0
-    while counter < 1:
-        run_program(bin_path, payload)
-        counter += 1
-
-    if (os.stat("bad.txt").st_size != 0): print("Found bad input.")
-        
