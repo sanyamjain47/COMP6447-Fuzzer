@@ -1,8 +1,7 @@
 import sys
-import json
 from pwn import *
 import file_type
-from main_fuzzer import start_csv
+from main_fuzzer import start_csv,start_json
 
 if __name__ == "__main__":
     
@@ -18,8 +17,11 @@ if __name__ == "__main__":
     
     payload = ""
 
-    payload,type = file_type.read_and_determine_data(temp_path)
+    payload,type_file = file_type.read_and_determine_data(temp_path)
     # print(payload)
-    if type == 'CSV':
+    if type_file == 'CSV':
         start_csv(payload, bin_path)
+    elif type_file == 'JSON':
+        start_json(payload,bin_path)
+
 
