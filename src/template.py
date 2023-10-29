@@ -101,11 +101,11 @@ def strat2(data: dict):
             }
     return data
 
-# Strategy 3: Long Strings
-# find a random string field and edit value to long string
 def strat3(data: dict):
+    """Strategy 3: Long Strings
+        find a random string field and edit value to long string
+    """
     keys_to_check = get_dict_all_keys_of_type(data, str)
-    print(keys_to_check)
     key_tup = random.choice(keys_to_check)
     updated_value = "A"*10000
     value = data
@@ -118,11 +118,26 @@ def strat3(data: dict):
     update_nested_dict(data, list(key_tup), updated_value)
     return data
 
-# # Strategy 4: Numerical Extremes
-# def strat4(data: dict):
+def strat4(data: dict):
+    """Strategy 4: Numerical Extremes
+        def strat4(data: dict):
+    """
+    keys_to_check = get_dict_all_keys_of_type(data, int)
+    key_tup = random.choice(keys_to_check)
+    updated_values = [1e100, 1e9999, -1, 420.69, 999999999999999999999999, -999999999999, 0]
+    updated_value = random.choice(updated_values)
+    value = data
+    for key in key_tup:
+        value = value[key]
+    if isinstance(value, list):
+        value[random.randint(0, len(value)-1)] = updated_value
+        updated_value = value
+
+    update_nested_dict(data, list(key_tup), updated_value)
+    return data
 
 if __name__ == "__main__":
-    print(strat3({
+    print(json.dumps(strat4({
         "len": 12,
         "input": "AAAABBBBCCCC",
         "more_data": ["a", "bb"],
@@ -136,4 +151,4 @@ if __name__ == "__main__":
                 "more_data": ["a", "bb"],
             },
         }
-}))
+    })))
