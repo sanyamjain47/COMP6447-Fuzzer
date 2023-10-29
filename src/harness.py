@@ -14,7 +14,17 @@ def run_binary_and_check_segfault(binary_path, q):
             try:
                 process = subprocess.run([binary_path], input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
             except subprocess.CalledProcessError as e:
-                print(f"An error occurred with exit code: {e.returncode}")
+                if e.returncode == -11:
+                    print(f"An error occurred with exit code: {e.returncode}")
+                    generate_report(input_data,e)
+                    sys.exit()
+
         else:
             # Sleep for a short duration to avoid busy-waiting
             time.sleep(5)
+
+def generate_report(s: str, e):
+    with open('bad.txt', 'a') as f:
+        f.write("Input causing the error:\n{}\n".format(s))
+        f.write("Error code: {}\n".format(e.returncode))
+        f.write("=" * 40 + "\n")  # Add a separator for readability
