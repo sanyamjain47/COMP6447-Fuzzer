@@ -4,7 +4,6 @@ from pwn import *
 import file_type
 from main_fuzzer import start_csv
 
-
 if __name__ == "__main__":
     
     # print(sys.argv)
@@ -24,7 +23,3 @@ if __name__ == "__main__":
     if type == 'CSV':
         start_csv(payload, bin_path)
 
-
-#    run_program(bin_path, payload)
-
-        

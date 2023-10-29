@@ -1,6 +1,16 @@
+"""
+# Example usage
+input_csv_file = "input.csv"
+output_dir = "fuzzed_csvs"
+fuzz_csv(input_csv_file, output_dir)
+"""
 import csv
+import json
 import random
 import os
+
+from library.helpers import get_dict_all_keys_of_type, update_nested_dict
+
 def fuzz_csv(input_csv_file, output_dir, num_fuzzed_files=10):
     """
     Fuzz a CSV file and generate 'num_fuzzed_files' number of fuzzed CSV files.
@@ -50,7 +60,95 @@ def fuzz_csv(input_csv_file, output_dir, num_fuzzed_files=10):
             writer = csv.writer(f)
             writer.writerow(header)
             writer.writerows(fuzzed_rows)
-# Example usage
-input_csv_file = "input.csv"
-output_dir = "fuzzed_csvs"
-fuzz_csv(input_csv_file, output_dir)
+
+
+def fuzz_json(data: dict) -> dict:
+    """
+    Fuzz a JSON.
+    Parameters:
+        - data: The dict of a input JSON.
+    """
+
+    # if (json is empty): populate
+
+    # Start generating fuzzed files
+    mutators = [
+        strat1,
+        strat2,
+        strat3,
+    ]
+    mutator = random.choice(mutators)
+    print(mutator)
+    return mutator(data)
+
+
+# Strategy 1: Duplicate Keys
+def strat1(data: dict):
+    key = random.choice(list(data.keys()))
+
+    # ensure different value for duplicate
+    payload = "AAAA"
+    if isinstance(data[key], str):
+        payload = data[key] + "A"
+    return data[key].append(payload)
+
+# Strategy 2: Nesting
+def strat2(data: dict):
+    max_depth = 50 # CRITICAL: SET MAX DEPTH
+    for _ in range(max_depth):
+        data = {
+            "data": [data]
+            }
+    return data
+
+def strat3(data: dict):
+    """Strategy 3: Long Strings
+        find a random string field and edit value to long string
+    """
+    keys_to_check = get_dict_all_keys_of_type(data, str)
+    key_tup = random.choice(keys_to_check)
+    updated_value = "A"*10000
+    value = data
+    for key in key_tup:
+        value = value[key]
+    if isinstance(value, list):
+        value[random.randint(0, len(value)-1)] = updated_value
+        updated_value = value
+
+    update_nested_dict(data, list(key_tup), updated_value)
+    return data
+
+def strat4(data: dict):
+    """Strategy 4: Numerical Extremes
+        def strat4(data: dict):
+    """
+    keys_to_check = get_dict_all_keys_of_type(data, int)
+    key_tup = random.choice(keys_to_check)
+    updated_values = [1e100, 1e9999, -1, 420.69, 999999999999999999999999, -999999999999, 0]
+    updated_value = random.choice(updated_values)
+    value = data
+    for key in key_tup:
+        value = value[key]
+    if isinstance(value, list):
+        value[random.randint(0, len(value)-1)] = updated_value
+        updated_value = value
+
+    update_nested_dict(data, list(key_tup), updated_value)
+    return data
+
+if __name__ == "__main__":
+    print(json.dumps(strat4({
+        "len": 12,
+        "input": "AAAABBBBCCCC",
+        "more_data": ["a", "bb"],
+        "again": {
+            "len": 12,
+            "input": "AAAABBBBCCCC",
+            "more_data": ["a", "bb"],
+            "again": {
+                "len": 12,
+                "input": "AAAABBBBCCCC",
+                "more_data": ["a", "bb"],
+            },
+        }
+    })))
