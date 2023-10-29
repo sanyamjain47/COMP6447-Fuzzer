@@ -1,7 +1,16 @@
+"""
+# Example usage
+input_csv_file = "input.csv"
+output_dir = "fuzzed_csvs"
+fuzz_csv(input_csv_file, output_dir)
+"""
 import csv
 import json
 import random
 import os
+
+from library.helpers import get_dict_all_keys_of_type, update_nested_dict
+
 def fuzz_csv(input_csv_file, output_dir, num_fuzzed_files=10):
     """
     Fuzz a CSV file and generate 'num_fuzzed_files' number of fuzzed CSV files.
@@ -51,10 +60,6 @@ def fuzz_csv(input_csv_file, output_dir, num_fuzzed_files=10):
             writer = csv.writer(f)
             writer.writerow(header)
             writer.writerows(fuzzed_rows)
-# Example usage
-input_csv_file = "input.csv"
-output_dir = "fuzzed_csvs"
-fuzz_csv(input_csv_file, output_dir)
 
 
 def fuzz_json(data: dict) -> dict:
@@ -99,22 +104,36 @@ def strat2(data: dict):
 # Strategy 3: Long Strings
 # find a random string field and edit value to long string
 def strat3(data: dict):
-    keys_to_check = list(data.keys())
+    keys_to_check = get_dict_all_keys_of_type(data, str)
+    print(keys_to_check)
+    key_tup = random.choice(keys_to_check)
+    updated_value = "A"*10000
+    value = data
+    for key in key_tup:
+        value = value[key]
+    if isinstance(value, list):
+        value[random.randint(0, len(value)-1)] = updated_value
+        updated_value = value
 
-    while keys_to_check:
-        current_key = random.choice(keys_to_check)
-        value = data.get(current_key)
-
-        if isinstance(value, str):
-            data[current_key] = "A" * 100
-            break
-        elif isinstance(value, dict):
-            keys_to_check.extend(value.keys())
-
-        keys_to_check.remove(current_key)
-        
+    update_nested_dict(data, list(key_tup), updated_value)
     return data
 
 # # Strategy 4: Numerical Extremes
 # def strat4(data: dict):
 
+if __name__ == "__main__":
+    print(strat3({
+        "len": 12,
+        "input": "AAAABBBBCCCC",
+        "more_data": ["a", "bb"],
+        "again": {
+            "len": 12,
+            "input": "AAAABBBBCCCC",
+            "more_data": ["a", "bb"],
+            "again": {
+                "len": 12,
+                "input": "AAAABBBBCCCC",
+                "more_data": ["a", "bb"],
+            },
+        }
+}))
