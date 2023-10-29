@@ -25,6 +25,6 @@ def run_binary_and_check_segfault(binary_path, q):
 
 def generate_report(s: str, e):
     with open('bad.txt', 'a') as f:
-        f.write("Input causing the error:\n {}\n".format(s))
+        f.write("Input causing the error:\n{}\n".format(s))
         f.write("Error code: {}\n".format(e.returncode))
         f.write("=" * 40 + "\n")  # Add a separator for readability
