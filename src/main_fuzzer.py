@@ -30,9 +30,9 @@ def start_json(s: str, binary_path: str):
     fuzzed_input = Queue()
 
     # Start generating inputs in a separate thread
-
-    fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input))
-    fuzz_generator_thread.start()
+    # START THIS IF NEEDED AFTER
+    # fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input))
+    # fuzz_generator_thread.start()
 
     jsonfuzz_generator_thread = Thread(target=generate_json_fuzzed_output, args=(s, fuzzed_input))
     jsonfuzz_generator_thread.start()
