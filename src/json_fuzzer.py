@@ -9,18 +9,14 @@ import random
 
 # ADD JSON FUZZ STRATS HERE
 
-# Strategy 1: Duplicate Keys
 def strat1(data: dict):
-    key = random.choice(list(data.keys()))
+    """Add new key"""
+    data["AAAA"] = "AAAA"
+    return data
 
-    # ensure different value for duplicate
-    payload = "AAAA"
-    if isinstance(data[key], str):
-        payload = data[key] + "A"
-    return data[key].append(payload)
 
-# Strategy 2: Nesting
 def strat2(data: dict):
+    """Strategy 2: Nesting"""
     max_depth = 50 # CRITICAL: SET MAX DEPTH
     for _ in range(max_depth):
         data = {
@@ -33,6 +29,8 @@ def strat3(data: dict):
         find a random string field and edit value to long string
     """
     keys_to_check = get_dict_all_keys_of_type(data, str)
+    if not keys_to_check:
+        return data
     key_tup = random.choice(keys_to_check)
     updated_value = "A"*10000
     value = data
@@ -50,6 +48,8 @@ def strat4(data: dict):
         def strat4(data: dict):
     """
     keys_to_check = get_dict_all_keys_of_type(data, int)
+    if not keys_to_check:
+        return data
     key_tup = random.choice(keys_to_check)
     updated_values = [1e100, 1e9999, -1, 420.69, 999999999999999999999999, -999999999999, 0]
     updated_value = random.choice(updated_values)
@@ -60,7 +60,7 @@ def strat4(data: dict):
         value[random.randint(0, len(value)-1)] = updated_value
         updated_value = value
 
-    update_nested_dict(data, list(key_tup), updated_value)
+    data = update_nested_dict(data, list(key_tup), updated_value)
     return data
 
 def strat5(data: dict):
@@ -90,6 +90,8 @@ def strat7(data: dict):
         def strat7(data: dict):
     """
     keys_to_check = get_dict_all_keys(data)
+    if not keys_to_check:
+        return data
     key_tup = random.choice(keys_to_check)
     updated_value = None
     update_nested_dict(data, list(key_tup), updated_value)
@@ -102,7 +104,6 @@ def strat9(data: dict):
     keys_to_check = get_dict_all_keys(data)
     key_tup = random.choice(keys_to_check)
     value = data
-    print(key_tup)
     for key in key_tup:
         value = value[key]
     if isinstance(value, list):
@@ -128,7 +129,7 @@ def generate_json_fuzzed_output(df, q):
         strat2,
         strat3,
         strat4,
-        strat5,
+        # strat5,
         strat7,
         strat9,
     ]
