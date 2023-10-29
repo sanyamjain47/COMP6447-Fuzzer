@@ -1,4 +1,5 @@
 import csv
+import json
 import random
 import os
 def fuzz_csv(input_csv_file, output_dir, num_fuzzed_files=10):
@@ -54,3 +55,63 @@ def fuzz_csv(input_csv_file, output_dir, num_fuzzed_files=10):
 input_csv_file = "input.csv"
 output_dir = "fuzzed_csvs"
 fuzz_csv(input_csv_file, output_dir)
+
+
+def fuzz_json(data: dict) -> dict:
+    """
+    Fuzz a JSON.
+    Parameters:
+        - data: The dict of a input JSON.
+    """
+
+    # if (json is empty): populate
+
+    # Start generating fuzzed files
+    mutators = [
+        strat1,
+        strat2,
+        strat3,
+    ]
+    mutator = random.choice(mutators)
+    print(mutator)
+    return mutator(data)
+
+
+# Strategy 1: Duplicate Keys
+def strat1(data: dict):
+    key = random.choice(list(data.keys()))
+
+    # ensure different value for duplicate
+    payload = "AAAA"
+    if isinstance(data[key], str): payload = data[key] + "A"
+    return data[key].append(payload)
+
+# Strategy 2: Nesting
+def strat2(data: dict):
+    max_depth = 50 # CRITICAL: SET MAX DEPTH
+    for _ in range(max_depth):
+        data = {
+            "data": [data]
+            }
+    return data
+
+# Strategy 3: Long Strings
+def strat3(data: dict):
+    keys_to_check = list(data.keys())
+
+    while keys_to_check:
+        current_key = random.choice(keys_to_check)
+        value = data.get(current_key)
+
+        if isinstance(value, str): 
+            data[current_key] = "A" * 100
+            break
+        elif isinstance(value, dict): keys_to_check.extend(value.keys())
+
+        keys_to_check.remove(current_key)
+        
+    return data
+
+# # Strategy 4: Numerical Extremes
+# def strat4(data: dict):
+
