@@ -1,5 +1,6 @@
 import random
 import itertools
+from queue import Queue
 
 ###################
 ## BASIC METHODS ##
@@ -61,7 +62,7 @@ def append_random_num_str(s: str):
 
 
 
-def generate_base_fuzzed_output(s: str):
+def generate_base_fuzzed_output(s: str, q):
     base_mutators = [
         delete_random_byte,
         insert_random_byte,
@@ -70,12 +71,14 @@ def generate_base_fuzzed_output(s: str):
         append_random_num_str
     ]
     #all_mets = set()
+    q.put(s)
     for r in range(1, len(base_mutators) + 1):  # r ranges from 1 to the number of base mutators
         for mutator_combination in itertools.combinations(base_mutators, r):  # All combinations of size r
             for i in range(10): # 10 is a constant to run every type of combinartion atleast 10 times. Can be reduced
                 fuzzed_output = s
                 for mutator in mutator_combination:
                     fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                q.put(fuzzed_output)
                 #all_mets.add(mutator_combination)
     #print(all_mets)
 

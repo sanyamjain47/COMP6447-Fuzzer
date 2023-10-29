@@ -72,7 +72,7 @@ def list_of_lists_to_csv(lst_lst):
         csv_string += csv_row + "\n"
     return csv_string
 
-def generate_csv_fuzzed_output(df):
+def generate_csv_fuzzed_output(df, q):
     csv_mutator = [
         inconsistent_data_types,
         negative_numbers,
@@ -81,6 +81,7 @@ def generate_csv_fuzzed_output(df):
         nested_quotes,
         add_many_rows,
     ]
+    df = csv_to_list_of_list(df)
     all_mets = set()
     for r in range(1, len(csv_mutator) + 1):  # r ranges from 1 to the number of base mutators
         for mutator_combination in itertools.combinations(csv_mutator, r):  # All combinations of size r
@@ -89,6 +90,7 @@ def generate_csv_fuzzed_output(df):
                 fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
                 # ADD THIS TO QUEUE # TODO
             csv_string = list_of_lists_to_csv(fuzzed_output)
+            q.put(csv_string)
             all_mets.add(mutator_combination)
 
 
@@ -105,6 +107,11 @@ def read_csv_to_list_of_lists(file_path):
         print(f"An error occurred: {e}")
         
     return data
+
+def csv_to_list_of_list(csv_string):
+    lines = csv_string.split("\n")
+    list_of_list = [line.split(",") for line in lines]
+    return list_of_list
 
 # Test it out
 if __name__ == "__main__":

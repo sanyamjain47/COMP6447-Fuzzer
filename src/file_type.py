@@ -9,7 +9,7 @@ def read_and_determine_data(file_path):
 
     if file_type == 'JSON':
         json_data = json.loads(content)
-        return json.dumps(json_data)
+        return json.dumps(json_data), "JSON"
     elif file_type == 'CSV':
         csv_reader = csv.DictReader(content.splitlines())
         csv_data = [row for row in csv_reader]
@@ -19,9 +19,9 @@ def read_and_determine_data(file_path):
             output.append(','.join(csv_fieldnames))
         for row in csv_data:
             output.append(','.join([str(row[field]) for field in csv_fieldnames]))
-        return '\n'.join(output)
+        return '\n'.join(output),"CSV"
     else:
-        return content
+        return content,"Plaintext"
 
 def determine_input_type(input_string):
     try:

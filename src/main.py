@@ -2,14 +2,7 @@ import sys
 import json
 from pwn import *
 import file_type
-
-
-def run_program(path: str, payload: str):
-    p = process(path)
-    payload = payload + "\n"
-    p.sendline(payload.encode())
-    print(p.recvall())
-    p.close()
+from main_fuzzer import start_csv
 
 
 if __name__ == "__main__":
@@ -26,12 +19,12 @@ if __name__ == "__main__":
     
     payload = ""
 
-    payload = file_type.read_and_determine_data(temp_path)
-    print(payload)
-    if isinstance(payload, dict):
-        payload = json.dumps(payload)
+    payload,type = file_type.read_and_determine_data(temp_path)
+    # print(payload)
+    if type == 'CSV':
+        start_csv(payload, bin_path)
 
 
-    run_program(bin_path, payload)
+#    run_program(bin_path, payload)
 
         
