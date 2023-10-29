@@ -1,150 +1,114 @@
 import random
 import itertools
-import pandas as pd
-
+import random
+from io import StringIO
+import csv
 ##########################
 ## CSV SPECIFIC METHODS ##
 ##########################
 
 
-def empty_cells(df):
-    row = random.randint(0, df.shape[0]-1)
-    col = random.randint(0, df.shape[1]-1)
-    df.iat[row, col] = ''
-    return df
+def inconsistent_data_types(lst_lst):
+    num_rows = len(lst_lst)
+    num_cols = len(lst_lst[0])
+    row = random.randint(0, num_rows - 1)
+    col = random.randint(0, num_cols - 1)
+    lst_lst[row][col] = str(lst_lst[row][col]) + 'abc'
+    return lst_lst
 
-def long_strings(df):
-    row = random.randint(0, df.shape[0]-1)
-    col = random.randint(0, df.shape[1]-1)
-    df.iat[row, col] = 'a' * 5000
-    return df
-
-def special_characters(df):
-    special_chars = ['\n', '\t', '\r']
-    row = random.randint(0, df.shape[0]-1)
-    col = random.randint(0, df.shape[1]-1)
-    df.iat[row, col] = random.choice(special_chars) + str(df.iat[row, col])
-    return df
-
-def inconsistent_data_types(df):
-    col = random.choice(df.columns)
-    row = random.randint(0, df.shape[0]-1)
-    df.iat[row, col] = str(df.iat[row, col]) + 'abc'
-    return df
-
-def header_manipulation(df):
-    new_col = random.choice(df.columns) + '_new'
-    df[new_col] = df[random.choice(df.columns)]
-    return df
-
-def negative_numbers(df):
-    numeric_cols = df.select_dtypes(include=['number']).columns
-    if numeric_cols.empty:
-        return df
+def negative_numbers(lst_lst):
+    num_rows = len(lst_lst)
+    numeric_cols = [i for i, val in enumerate(lst_lst[0]) if isinstance(val, (int, float))]
+    if not numeric_cols:
+        return lst_lst
     col = random.choice(numeric_cols)
-    row = random.randint(0, df.shape[0]-1)
-    df.at[row, col] = -abs(df.at[row, col])
-    return df
+    row = random.randint(0, num_rows - 1)
+    lst_lst[row][col] = -abs(lst_lst[row][col])
+    return lst_lst
 
-def foreign_characters(df):
+def foreign_characters(lst_lst):
     foreign_chars = ['你', '好', '안', '녕', 'こんにちは', 'م', 'λ', 'Φ', 'Ж', 'א', 'ß', 'Ñ']
-    
-    # Select random row and column
-    row = random.randint(0, df.shape[0] - 1)
-    col = random.randint(0, df.shape[1] - 1)
-    
-    num_chars = random.randint(1, 10)  # You can adjust the range
+    num_rows = len(lst_lst)
+    num_cols = len(lst_lst[0])
+    row = random.randint(0, num_rows - 1)
+    col = random.randint(0, num_cols - 1)
+    num_chars = random.randint(1, 10)
     random_chars = ''.join(random.choices(foreign_chars, k=num_chars))
-    
-    df.iat[row, col] = random_chars
-    
-    return df
+    lst_lst[row][col] = random_chars
+    return lst_lst
 
-def extra_commas(df):
-    row = random.randint(0, df.shape[0]-1)
-    col = random.choice(df.columns)
-    df.at[row, col] = str(df.at[row, col]) + ',,,'
-    return df
+def extra_commas(lst_lst):
+    num_rows = len(lst_lst)
+    num_cols = len(lst_lst[0])
+    row = random.randint(0, num_rows - 1)
+    col = random.randint(0, num_cols - 1)
+    lst_lst[row][col] = str(lst_lst[row][col]) + ',,,'
+    return lst_lst
 
-def nested_quotes(df):
-    row = random.randint(0, df.shape[0]-1)
-    col = random.randint(0, df.shape[1]-1)
-    df.iat[row, col] = '"' + str(df.iat[row, col]) + '"'
-    return df
+def nested_quotes(lst_lst):
+    num_rows = len(lst_lst)
+    num_cols = len(lst_lst[0])
+    row = random.randint(0, num_rows - 1)
+    col = random.randint(0, num_cols - 1)
+    lst_lst[row][col] = '"' + str(lst_lst[row][col]) + '"'
+    return lst_lst
+
+# Adding rows or columns in a list-of-lists can be resource-intensive due to the need to copy existing data.
+# Here's a simple example for adding rows:
+
+def add_many_rows(lst_lst):
+    num_rows = len(lst_lst)
+    num_new_rows = random.randint(1000, 5000)
+    row_to_duplicate = random.randint(0, num_rows - 1)
+    for _ in range(num_new_rows):
+        lst_lst.append(lst_lst[row_to_duplicate][:])
+    return lst_lst
 
 
-def add_many_rows(df):
-    num_rows = random.randint(1000, 5000)  # You can adjust these numbers
-    new_rows = pd.DataFrame([df.iloc[random.randint(0, df.shape[0]-1)]] * num_rows).reset_index(drop=True)
-    return pd.concat([df, new_rows]).reset_index(drop=True)
 
-def add_many_columns(df):
-    num_cols = random.randint(50, 200)  # You can adjust these numbers
-    for i in range(num_cols):
-        new_col_name = f'RandomCol_{i}'
-        random_col = df[random.choice(df.columns)]
-        df[new_col_name] = random_col
-    return df
-
-def duplicate_rows_and_columns(df):
-    num_row_duplications = random.randint(5, 20)  # You can adjust these numbers
-    num_col_duplications = random.randint(5, 20)  # You can adjust these numbers
-    
-    # Duplicate rows
-    for _ in range(num_row_duplications):
-        row = random.randint(0, df.shape[0]-1)
-        df = pd.concat([df.iloc[:row], df.iloc[row:row+1], df.iloc[row:]], ignore_index=True)
-        
-    # Duplicate columns
-    for _ in range(num_col_duplications):
-        col = random.choice(df.columns)
-        new_col_name = f'{col}_dup'
-        df[new_col_name] = df[col]
-        
-    return df
-
-# Combine rows and columns
-def combine_rows_and_columns(df):
-    # Double the rows
-    df = pd.concat([df]*2).reset_index(drop=True)
-    
-    # Double the columns
-    for col in df.columns:
-        new_col_name = f'{col}_dup'
-        df[new_col_name] = df[col]
-        
-    return df
+def list_of_lists_to_csv(lst_lst):
+    output = StringIO()
+    csv_writer = csv.writer(output)
+    csv_writer.writerows(lst_lst)
+    return output.getvalue()
 
 
 
 def generate_csv_fuzzed_output(df):
     csv_mutator = [
-        empty_cells,
-        long_strings,
-        special_characters,
         inconsistent_data_types,
-        header_manipulation,
         negative_numbers,
         foreign_characters,
         extra_commas,
         nested_quotes,
-        add_many_columns,
         add_many_rows,
-        duplicate_rows_and_columns,
-        combine_rows_and_columns
     ]
-    #all_mets = set()
+    all_mets = set()
     for r in range(1, len(csv_mutator) + 1):  # r ranges from 1 to the number of base mutators
         for mutator_combination in itertools.combinations(csv_mutator, r):  # All combinations of size r
-            for i in range(10): # 10 is a constant to run every type of combinartion atleast 10 times. Can be reduced
-                fuzzed_output = df
-                for mutator in mutator_combination:
-                    fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
-                    # ADD THIS TO QUEUE # TODO
-
-                #all_mets.add(mutator_combination)
-    #print(all_mets)
+            fuzzed_output = df
+            for mutator in mutator_combination:
+                fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                # ADD THIS TO QUEUE # TODO
+            csv_string = list_of_lists_to_csv(fuzzed_output)
+            if len(mutator_combination) == 1:
+                print("***")
+                print(csv_string)
+                print("***")
+            all_mets.add(mutator_combination)
+    print(all_mets)
 
 # Test it out
 if __name__ == "__main__":
-    generate_csv_fuzzed_output("test_string")
+
+    df = [
+    ['Name', 'Age', 'Occupation'],
+    ['Alice', 28, 'Engineer'],
+    ['Bob', 34, 'Doctor'],
+    ['Charlie', 45, 'Teacher'],
+    ['David', 23, 'Artist']
+]   
+
+    print(df)
+
+    generate_csv_fuzzed_output(df)
