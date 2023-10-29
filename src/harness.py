@@ -1,4 +1,4 @@
-import subprocess
+from pwn import *
 
 # Run this multithreaded
 def run_binary_and_check_segfault(binary_path, input_data):

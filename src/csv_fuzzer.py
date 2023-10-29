@@ -3,7 +3,7 @@ import itertools
 import random
 from io import StringIO
 import csv
-
+from harness import run_binary_and_check_segfault
 ##########################
 ## CSV SPECIFIC METHODS ##
 ##########################
@@ -56,7 +56,7 @@ def nested_quotes(lst_lst):
 
 def add_many_rows(lst_lst):
     num_rows = len(lst_lst)
-    num_new_rows = random.randint(1000, 5000)
+    num_new_rows = random.randint(100, 200)
     row_to_duplicate = random.randint(0, num_rows - 1)
     for _ in range(num_new_rows):
         lst_lst.append(lst_lst[row_to_duplicate][:])
@@ -65,12 +65,12 @@ def add_many_rows(lst_lst):
 
 
 def list_of_lists_to_csv(lst_lst):
-    output = StringIO()
-    csv_writer = csv.writer(output)
-    csv_writer.writerows(lst_lst)
-    return output.getvalue()
-
-
+    csv_string = ""
+    for row in lst_lst:
+        row_str = [str(item) for item in row]
+        csv_row = ",".join(row_str)
+        csv_string += csv_row + "\n"
+    return csv_string
 
 def generate_csv_fuzzed_output(df):
     csv_mutator = [
@@ -91,15 +91,27 @@ def generate_csv_fuzzed_output(df):
             csv_string = list_of_lists_to_csv(fuzzed_output)
             all_mets.add(mutator_combination)
 
+
+def read_csv_to_list_of_lists(file_path):
+    data = []
+    try:
+        with open(file_path, mode ='r') as file:
+            csv_reader = csv.reader(file)
+            for row in csv_reader:
+                data.append(row)
+    except FileNotFoundError:
+        print(f"File {file_path} not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        
+    return data
+
 # Test it out
 if __name__ == "__main__":
 
-    df = [
-    ['Name', 'Age', 'Occupation'],
-    ['Alice', 28, 'Engineer'],
-    ['Bob', 34, 'Doctor'],
-    ['Charlie', 45, 'Teacher'],
-    ['David', 23, 'Artist']
-]   
-
-    generate_csv_fuzzed_output(df)
+    df = read_csv_to_list_of_lists("../assignment/csv1.txt")
+    temp = add_many_rows(df)
+    csv_string = list_of_lists_to_csv(temp)
+    # print(csv_string)
+    run_binary_and_check_segfault("../assignment/csv1",csv_string)
+#    generate_csv_fuzzed_output(df)
