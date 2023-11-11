@@ -1,6 +1,7 @@
 import random
 import itertools
 from queue import Queue
+from pwn import log
 
 ###################
 ## BASIC METHODS ##
@@ -70,17 +71,22 @@ def generate_base_fuzzed_output(s: str, q):
         append_random_num_bytes,
         append_random_num_str
     ]
-    #all_mets = set()
+    all_mets = set()
     q.put(s)
     for r in range(1, len(base_mutators) + 1):  # r ranges from 1 to the number of base mutators
         for mutator_combination in itertools.combinations(base_mutators, r):  # All combinations of size r
-            for i in range(10): # 10 is a constant to run every type of combinartion atleast 10 times. Can be reduced
+            #log.info("mutator_combination = {}".format(mutator_combination))
+            for i in range(5): # 10 is a constant to run every type of combination atleast 10 times. Can be reduced
                 fuzzed_output = s
                 for mutator in mutator_combination:
                     fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                    print(fuzzed_output)
+                    log.info("Currently mutatating using: {}".format(mutator))
                 q.put(fuzzed_output)
-                #all_mets.add(mutator_combination)
+                all_mets.add(mutator_combination)
     #print(all_mets)
+    log.info('all combinations done???')
+    #generate_base_fuzzed_output(s,q)
 
 # Test it out
 if __name__ == "__main__":
