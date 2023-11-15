@@ -1,6 +1,5 @@
 import random
 import itertools
-from queue import Queue
 
 ###################
 ## BASIC METHODS ##
@@ -10,7 +9,7 @@ from queue import Queue
 def bit_flip(s: str):
     if not s:
         return s
-    
+
     pos = random.randint(0, len(s) - 1)
     char = s[pos]
     bits_to_flip = random.randint(1, 7)
@@ -25,7 +24,7 @@ def bit_flip(s: str):
 def delete_random_byte(s: str):
     if not s:
         return s
-    
+
     pos = random.randint(0, len(s) - 1)
     length = random.randint(1, len(s) - pos)
     return s[:pos] + s[pos+length:]
@@ -42,7 +41,7 @@ def insert_random_byte(s: str):
 def append_random_num_bytes(s: str):
     if not s:
         return s
-    
+
     num_bytes = random.randint(1, 50)
     random_char = chr(random.randrange(32,127))
     return s + (num_bytes * random_char)
@@ -53,7 +52,7 @@ def append_random_num_bytes(s: str):
 def append_random_num_str(s: str):
     if not s:
         return s
-    
+
     lower_bound = random.randint(0, len(s) - 1)
     upper_bound = random.randint(lower_bound, len(s))
     multiplier = random.randint(1, 10)
