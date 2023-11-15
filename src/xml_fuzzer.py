@@ -10,6 +10,8 @@ from pwn import *
 ##########################
 
 
+# et is the object istnce of the tree
+
 '''
 1. delete closing tags
 2/ delete the > of the tag
@@ -26,35 +28,110 @@ XML attribute values must be quoted
 
 '''
 
-def rearrange_tags(xml_root):
-    #TODO
-    return xml_root
+def rearrange_tags(f: str):
+    data = []
+    #root = et.fromstring(xml)
+    
+    print("lines are")
+    for line in f:
+        data.append(line)
+        #print(line, end="") 
+    
 
-def add_root(xml_root):
-    #TODO
-    return xml_root
+    # for elem in root.findall(".//"):
+    #     elem.text = "NEW TEXT!"   
+    #     elem.set("SET","NUMBER\"")
+    #     data.append(elem)
+        
 
-def remove_closing_tag(xml_root):
+    # print(et.dump(root))
+    # for elem in root.findall(".//"):
+    #     print(elem.tag)
+    #     data.append(elem)
+
+    # for child in root:
+    #     for sub_elem in child:
+    #         sub_elem.text = "NEWW TEXT?????"
+    # print(et.dump(root))
+
+
+    #print("length data = {}".format(len(data)))
+
+    index1 = random.randrange(len(data)) # len data - 1?
+    index2 = random.randrange(len(data))
+
+    # swapping tag1 and tag2 position
+    tag1 = data[index1] # tag1
+    data[index1] = data[index2]
+    data[index2] = tag1
+
+    print("Swapping {} and {} to get:".format(data[index1], data[index2]))
+    
+    
+    
+    xml_str = array_to_str(data)
+    print(xml_str)
+    return xml_str 
+
+
+def array_to_str(lst):
+    xml = ""
+    for row in lst:
+        xml += row
+    return xml
+
+# def format_xml(file_path: str):
+#     data = []
+#     tree = et.parse(file_path)
+#     root = tree.getroot()
+#     for children in root:
+#         for sub_elements in children:
+#             data.append(sub_elements)
+
+#     return data
+
+
+# XML files are only valid if there is one root 
+# returns a new xml str with 2 roots (same tag)
+def add_root(f: str):
+    xml = f.read
+    root = et.fromstring(xml)
+    new_root = "<{}>\n<\\{}>".format(root.tag, root.tag)
+    print(xml + new_root)
+    return xml + new_root
+
+def remove_closing_tag(f: str):
+
     #TODO: maybe not necessary as basic functions will cover (but more randomly)
-    return xml_root
+    return xml
 
-def capitalise_random_tag(xml_root):
+
+
+def capitalise_random_tag(f: str):
     # TODO: maybe not necessary as basics could cover this
     return xml_root
 
-def add_symbols(xml_root):
-    # TODO: insert &">?"    against maybe not necessary
-    return xml_root
+def add_symbols(f: str):
+    # TODO: maybe edit so it puts the symbol somewhere more specific
+    symbols = ['<', '>', '<\\', '<>', '&', '^', '=', '\'', '\"']
+    symbol = random.choice(symbols)
+    pos = random.randint(0, len(xml))
+    print("Inserting symbol '{}'".format(symbol), "at position {} to get: \n".format(pos), xml[:pos] + symbol + xml[pos:])
+    return xml[:pos] + symbol + xml[pos:]
 
-def remove_quotations(xml_root):
+
+def remove_quotations(f: str):
+    # loop through
+    # if char = "" then remove some randomly
     #TODO remove "for vakue attributes"
     return xml_root
 
-def modify_nesting(xml_root):
+def modify_nesting(f: str):
+    # can do this with et.indent()
     #TODO 
     return xml_root
 
-def header(xml_root):
+def header(f: str):
     # TODO insert / move header   <?xml version="1.0" encoding="UTF-8"?>
     return xml_root
 
@@ -114,9 +191,10 @@ def run_binary(binary_path: str, q: Queue):
 if __name__ == "__main__":
     q = Queue()
     with open('test_inputs/xml.txt', 'r') as f:
-        content = f.read()
-        print(content)
+        content = f.read # pass input on as the file and convert it to content
+        #root = et.fromstring(content)
+        fuzzed_input = rearrange_tags(f)
 
-    q.put(content)
+    q.put(fuzzed_input)
     run_binary("../assignment/xml1", q)
 
