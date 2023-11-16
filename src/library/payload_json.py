@@ -17,14 +17,16 @@ class PayloadJson(Payload):
         """Produce Json output"""
         return json.dumps(self.payload)
 
-    def set_field(self, field: Union[str, tuple[str]], val: Any):
+    def set_field(self, field: Union[str, tuple[str]], val: Any, update_keys: bool = True):
         """set field in json obj"""
         if isinstance(field, str):
             self.payload[field] = val
-            self.keys.append((field,))
+            if (update_keys):
+                self.keys.append((field,))
         else:
             update_nested_dict(self.payload, list(field), val)
-            self.keys.append(field)
+            if (update_keys):
+                self.keys.append(field)
 
     def get_keys(self) -> list[tuple[str]]:
         """set get list of tuples of keys to access object and nested objs"""

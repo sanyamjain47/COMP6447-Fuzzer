@@ -5,7 +5,7 @@ import itertools
 ## BASIC METHODS ##
 ###################
 
-# Flips one bit of a character in a string
+# Flips 1-8 bits of a character in a string (bit or byte flipping)
 def bit_flip(s: str):
     if not s:
         return s
@@ -17,7 +17,6 @@ def bit_flip(s: str):
         bit = 1 << random.randint(0, 6)
         char = chr(ord(char) ^ bit)
     return s[:pos] + char + s[pos+1:]
-
 
 
 # Deletes a random character from the string

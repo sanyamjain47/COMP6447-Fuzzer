@@ -1,0 +1,16 @@
+<html>
+    <head>
+        <link href="http://somewebsite.com" />
+    </head>
+    <body>
+        <h1>I'm not a web developer.</h1>
+    </body>
+
+    <div id="#lol">
+        <a href="%s">Here is some link...</a>
+    </div>
+    <a />
+
+    <tail>
+    </tail>
+</html>

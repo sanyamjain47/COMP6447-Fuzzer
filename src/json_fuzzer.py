@@ -1,28 +1,29 @@
+"""
+###########################
+## JSON SPECIFIC METHODS ##
+###########################
+"""
 import itertools
 
 from copy import deepcopy
 from library import PayloadJson
 import random
-##########################
-## JSON SPECIFIC METHODS ##
-##########################
 
-# ADD JSON FUZZ STRATS HERE
 
-def strat1(data: PayloadJson):
+def more_keys(data: PayloadJson):
     """Add new key"""
     data.set_field("AAAA", "AAAA")
     return data
 
 
-def strat2(data: PayloadJson):
+def nesting(data: PayloadJson):
     """Strategy 2: Nesting"""
     max_depth = 5 # CRITICAL: SET MAX DEPTH
     for i in range(max_depth):
-        data.set_field(f"data{i}", [deepcopy(data.get_data())])
+        data.set_field(f"data{i}", [deepcopy(data.get_data())], update_keys=False)
     return data
 
-def strat3(data: PayloadJson):
+def long_strings(data: PayloadJson):
     """Strategy 3: Long Strings
         find a random string field and edit value to long string
     """
@@ -38,7 +39,7 @@ def strat3(data: PayloadJson):
     data.set_field(key_tup, updated_value)
     return data
 
-def strat4(data: PayloadJson):
+def magic_numbers(data: PayloadJson):
     """Strategy 4: Numerical Extremes
         def strat4(data: dict):
     """
@@ -55,12 +56,12 @@ def strat4(data: PayloadJson):
     data.set_field(key_tup, updated_value)
     return data
 
-def strat5(data: PayloadJson):
+def large_keys(data: PayloadJson):
     """Strategy 5: Large Amount of Keys
     def strat5(data: dict):
     """
     for i in range(1000):
-        data.set_field(f"key{i}", f"value{i}")
+        data.set_field(f"key{i}", f"value{i}", update_keys=False)
     return data
 
 # def strat6(data: dict):
@@ -77,7 +78,7 @@ def strat5(data: PayloadJson):
     
 
 
-def strat7(data: PayloadJson):
+def null_values(data: PayloadJson):
     """Strategy 7: send null values
         def strat7(data: dict):
     """
@@ -88,7 +89,7 @@ def strat7(data: PayloadJson):
     data.set_field(key_tup, None)
     return data
 
-def strat9(data: PayloadJson):
+def null_like_values(data: PayloadJson):
     """Strategy 9: send null-like values
         def strat9(data: dict):
     """
@@ -112,16 +113,24 @@ def strat9(data: PayloadJson):
     data.set_field(key_tup, updated_value)
     return data
 
+def fstrings(data: PayloadJson):
+    keys_to_check = data.get_keys_of_type(str)
+    if not keys_to_check:
+        return data
+    key_tup = random.choice(keys_to_check)
+    data.set_field(key_tup, "%s%s%s%s")
+    
+
 
 def generate_json_fuzzed_output(df, q):
     json_mutator = [
-        strat1,
-        strat2,
-        strat3,
-        strat4,
-        strat5,
-        strat7,
-        strat9,
+        more_keys,
+        nesting,
+        long_strings,
+        magic_numbers,
+        large_keys,
+        null_values,
+        null_like_values,
     ]
 
     for r in range(len(json_mutator)):  # r ranges from 1 to the number of base mutators
