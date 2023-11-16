@@ -1,7 +1,7 @@
 import sys
 from pwn import *
 import file_type
-from main_fuzzer import start_csv,start_json, start_general
+from main_fuzzer import start_csv,start_json, start_general, start_xml
 
 if __name__ == "__main__":
     
@@ -24,10 +24,10 @@ if __name__ == "__main__":
         start_csv(payload, bin_path)
     elif type_file == 'JSON':
         log.info('Going into json with {}, {}'.format(payload, bin_path) )
-        start_json(payload,bin_path)
+        start_json(payload, bin_path)
     elif type_file == 'XML':
         log.info('Going into xml with {}, {}'.format(payload, bin_path) )
-        start_general(payload, bin_path)
+        start_xml(payload, bin_path)
     else: 
 
         log.info('Going into generic with {}, {}'.format(payload, bin_path) )

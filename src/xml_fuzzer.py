@@ -1,8 +1,8 @@
 import itertools
 from queue import Queue
+import random
 import subprocess
 import sys
-from harness import run_binary_and_check_segfault
 import xml.etree.ElementTree as et
 from pwn import *
 ##########################
@@ -28,11 +28,8 @@ XML attribute values must be quoted
 
 '''
 
-def rearrange_tags(f: str):
-    data = []
-
-    for line in f:
-        data.append(line)
+def rearrange_tags(xml: str):
+    data = xml.splitlines()
 
     index1 = random.randrange(len(data)) # len data - 1?
     index2 = random.randrange(len(data))
@@ -42,24 +39,18 @@ def rearrange_tags(f: str):
     data[index1] = data[index2]
     data[index2] = tag1
 
-    print("Swapping {} and {} to get:".format(data[index1], data[index2]))
-    
-    xml_str = array_to_str(data)
-    print(xml_str)
+    # print("Swapping {} and {} to get:".format(data[index1], data[index2]))
+    xml_str = lst_to_str(data)
     return xml_str 
 
 # XML files are only valid if there is one root 
 # returns a new xml str with 2 roots (same tag)
-def add_root(f: str):
-    xml = f.read()
-
+def add_root(xml: str):
     root = et.fromstring(xml)
     new_root = "<{}>\n<\\{}>".format(root.tag, root.tag)
-    print(xml + new_root)
     return xml + new_root
 
-def remove_key_symbols(f: str):
-    xml = f.read()
+def remove_key_symbols(xml: str):
     symbols = ['>', '=', '\'', '\"', '?']
 
     pos_tags = []
@@ -77,32 +68,51 @@ def remove_key_symbols(f: str):
     #TODO: maybe not necessary as basic functions will cover (but more randomly)
     return xml[:pos] + xml[pos+1:]
 
+# Returns the xml with various char capitalised
+def capitalise_random(xml: str):
+    return ''.join(random.choice((str.upper, str.lower))(char) for char in xml)
 
-def capitalise_random(f: str):
-    xml = f.read()
-    capitalised_xml = ''.join(random.choice((str.upper, str.lower))(char) for char in xml)
-    return capitalised_xml
-
-def add_symbols(f: str):
+def add_symbols(xml: str):
     # TODO: maybe edit so it puts the symbol somewhere more specific
-    xml = f.read()
     symbols = ['<', '>', '<\\', '<>', '&', '^', '=', '\'', '\"']
     symbol = random.choice(symbols)
     pos = random.randint(0, len(xml))
-    print("Inserting symbol '{}'".format(symbol), "at position {} to get: \n".format(pos), xml[:pos] + symbol + xml[pos:])
+    # print("Inserting symbol '{}'".format(symbol), "at position {} to get: \n".format(pos), xml[:pos] + symbol + xml[pos:])
     return xml[:pos] + symbol + xml[pos:]
 
-def modify_nesting(f: str):
+def modify_nesting(xml: str):
     # can do this with et.indent()?
-    xml = f.readlines()
+    data = xml.splitlines()
 
-    line = random.randint(0, len(xml)-1)
-    xml[line] = '\t' + xml[line]
-    xml_str = array_to_str(xml)
+    line = random.randint(0, len(data)-1)
+    data[line] = '\t' + data[line]
+    xml_str = lst_to_str(data)
     return xml_str
 
+# Format string fuzzer checks FS vulnerability
+# Replaces any links in tag <a href="???"> with "%s%s%s"
+def format_string(xml: str):
+    if ('href=\"' not in xml):
+        return xml
 
-def fuzz_xml(f: str, q: Queue):
+    lines = xml.splitlines()
+    i = 0
+    for line in lines:
+        if ("href=" in line):
+            start, end, j = 0, 0, 0
+            for char in line:
+                if (char == '\"' and start == 0):
+                    start = j + 1
+                elif (char == '\"' and start):
+                    end = j
+                j += 1
+            lines [i] = line[:start]  + '%s%s%s' + line[end:]
+        i += 1
+
+    xml_str = lst_to_str(lines)
+    return xml_str
+
+def fuzz_xml(xml: str, q: Queue):
     xml_mutators = [
         rearrange_tags,
         add_root,
@@ -110,19 +120,19 @@ def fuzz_xml(f: str, q: Queue):
         capitalise_random,
         add_symbols,
         modify_nesting,
+        format_string,
     ]
 
+    
     for r in range(1, len(xml_mutators) + 1):  # r ranges from 1 to the number of base mutators
         for mutator_combination in itertools.combinations(xml_mutators, r):  # All combinations of size r
-                fuzzed_output = f
-                for mutator in mutator_combination:
-                    print("mutator = ", mutator)
-                    print(fuzzed_output)
-                    fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
-                    print(fuzzed_output)
-                    log.info("Currently mutatating using: {}".format(mutator))
-                q.put(fuzzed_output)
-
+            #input = f
+            for mutator in mutator_combination:
+                fuzzed_output = mutator(xml)  # Apply each mutator in the combination to the string
+                #print(fuzzed_output)
+                #log.info("Currently mutatating using: {}".format(mutator))
+            q.put(fuzzed_output)
+    log.info('all combinations done in XML???')
 
 
 # def format_xml(file_path: str):
@@ -135,10 +145,10 @@ def fuzz_xml(f: str, q: Queue):
 
 #     return data
 
-def array_to_str(lst):
+def lst_to_str(lst):
     xml = ""
     for row in lst:
-        xml += row
+        xml += row + '\n'
     return xml
             
 
@@ -165,10 +175,9 @@ def run_binary(binary_path: str, q: Queue):
 if __name__ == "__main__":
     q = Queue()
     with open('test_inputs/xml.txt', 'r') as f:
-        content = f.read # pass input on as the file and convert it to content
+        content = f.read() # pass input on as the file and convert it to content
         #root = et.fromstring(content)
-        fuzzed_input = fuzz_xml(f, q)
+    fuzzed_input = format_string(content)
 
-    #q.put(fuzzed_input)
+    q.put(fuzzed_input)
     run_binary("../assignment/xml1", q)
-

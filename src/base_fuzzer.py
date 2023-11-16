@@ -80,8 +80,8 @@ def generate_base_fuzzed_output(s: str, q):
                 fuzzed_output = s
                 for mutator in mutator_combination:
                     fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
-                    print(fuzzed_output)
-                    log.info("Currently mutatating using: {}".format(mutator))
+                    # print(fuzzed_output)
+                    # log.info("Currently mutatating using: {}".format(mutator))
                 q.put(fuzzed_output)
                 all_mets.add(mutator_combination)
     #print(all_mets)
