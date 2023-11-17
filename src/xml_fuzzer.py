@@ -5,9 +5,62 @@ import subprocess
 import sys
 import xml.etree.ElementTree as et
 from pwn import *
+from harness import run_binary_and_check_segfault
+from queue import Queue
+from threading import Thread
 ##########################
 ## XML SPECIFIC METHODS ##
 #########################
+
+def duplicate_tags(xml: str):
+    data = xml.splitlines()
+    index = random.randrange(len(data))
+    tag = data[index]
+    # Inserting the duplicate tag right after the original
+    data.insert(index + 1, tag)
+    return lst_to_str(data)
+
+def remove_random_tags(xml: str):
+    data = xml.splitlines()
+    if len(data) > 1:
+        index = random.randrange(len(data))
+        del data[index]
+    return lst_to_str(data)
+
+def random_attribute_injection(xml: str):
+    data = xml.splitlines()
+    for i, line in enumerate(data):
+        start = line.find('<')
+        end = line.find('>')
+        # Check if it's a valid tag and not a closing tag
+        if start != -1 and end != -1 and '/' not in line[start:end]:
+            new_attr = f' randomAttr{random.randint(0, 100)}="value"'
+            # Insert the new attribute just before the closing '>'
+            data[i] = line[:end] + new_attr + line[end:]
+    return lst_to_str(data)
+
+
+
+def change_tag_names(xml: str):
+    data = xml.splitlines()
+    for i, line in enumerate(data):
+        if '<' in line and '>' in line:
+            start = line.find('<') + 1
+            end = line.find('>')
+            if start < end:
+                new_tag = "randomTag" + str(random.randint(0, 100))
+                data[i] = line[:start] + new_tag + line[end:]
+    return lst_to_str(data)
+
+def break_tag_structure(xml: str):
+    data = xml.splitlines()
+    if len(data) > 0:
+        index = random.randrange(len(data))
+        tag = data[index]
+        if '<' in tag and '>' in tag:
+            # Break the tag by removing its closing '>'
+            data[index] = tag.replace('>', '', 1)
+    return lst_to_str(data)
 
 def rearrange_tags(xml: str):
     data = xml.splitlines()
@@ -27,9 +80,9 @@ def rearrange_tags(xml: str):
 # XML files are only valid if there is one root 
 # returns a new xml str with 2 roots (same tag)
 def add_root(xml: str):
-    root = et.fromstring(xml)
-    new_root = "<{}>\n<\\{}>".format(root.tag, root.tag)
-    return xml + new_root
+    new_root_tag = "newroot"
+    return f"<{new_root_tag}>{xml}</{new_root_tag}>"
+
 
 def remove_key_symbols(xml: str):
     symbols = ['>', '=', '\'', '\"', '?']
@@ -100,8 +153,7 @@ def insert_img(xml:str):
         pos += 1
     return xml
 
-
-def fuzz_xml(xml: str, q: Queue):
+def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path):
     xml_mutators = [
         rearrange_tags,
         add_root,
@@ -111,16 +163,59 @@ def fuzz_xml(xml: str, q: Queue):
         modify_nesting,
         format_string,
         insert_img,
+        duplicate_tags,
+        remove_random_tags,
+        random_attribute_injection,
+        change_tag_names,
+        break_tag_structure
     ]
 
-    for r in range(1, len(xml_mutators) + 1):  
-        for mutator_combination in itertools.combinations(xml_mutators, r):  
+    all_possible_mutations = Queue()
+    for count in range(10):  # Adjust this count as needed
+        for r in range(1, len(xml_mutators) + 1):
+            for mutator_combination in itertools.combinations(xml_mutators, r):
+                all_possible_mutations.put(mutator_combination)
+
+    # Start generator threads
+    generator_threads = multi_threaded_generator_xml(all_possible_mutations, xml, fuzzed_queue, num_threads=1)
+
+    # Start harness threads
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=1)
+
+    # Wait for all generator and harness threads to complete
+    for thread in generator_threads + harness_threads:
+        thread.join()
+
+def multi_threaded_generator_xml(mutator_queue, input_xml, fuzzed_queue, num_threads=5):
+    threads = []
+    def thread_target():
+        generator_xml(mutator_queue, input_xml, fuzzed_queue)
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+    return threads
+
+def generator_xml(mutator_queue, input_xml, fuzzed_queue):
+    while True:
+        if not mutator_queue.empty():
+            mutator_combination = mutator_queue.get()
+            fuzzed_output = input_xml
             for mutator in mutator_combination:
-                fuzzed_output = mutator(xml) 
-                #print(fuzzed_output)
-                #log.info("Currently mutatating using: {}".format(mutator))
-            q.put(fuzzed_output)
-    log.info('All XML fuzzer combinations done')
+                fuzzed_output = mutator(fuzzed_output)
+            fuzzed_queue.put({"input":fuzzed_output,"mutator":mutator_combination})
+        else:
+            return
+
+def multi_threaded_harness(binary_path, fuzzed_queue, num_threads=5):
+    threads = []
+    def thread_target():
+        run_binary_and_check_segfault(binary_path, fuzzed_queue)
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+    return threads
 
 def lst_to_str(lst):
     xml = ""
@@ -128,26 +223,6 @@ def lst_to_str(lst):
         xml += row + '\n'
     return xml
             
-
-# TODO: deleteing//// for Testing
-def run_binary(binary_path: str, q: Queue):
-
-    input_data = q.get()
-
-    p = process(binary_path)
-    p.sendline(input_data.encode())
-    #print(p.recvall())
-
-    try:
-        p = subprocess.run([binary_path], input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        if e.returncode == -11:
-            print(f"An error occurred with exit code: {e.returncode}")
-            print(f"The input the caused the error has been put in bad.txt")
-            sys.exit()
-    print("No errors found")
-
-
 
 if __name__ == "__main__":
     q = Queue()
@@ -157,4 +232,4 @@ if __name__ == "__main__":
     fuzzed_input = insert_img(content)
 
     q.put(fuzzed_input)
-    run_binary("../assignment/xml3", q)
+    # run_binary("../assignment/xml3", q)
