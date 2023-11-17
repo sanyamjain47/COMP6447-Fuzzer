@@ -7,26 +7,7 @@ import xml.etree.ElementTree as et
 from pwn import *
 ##########################
 ## XML SPECIFIC METHODS ##
-##########################
-
-
-# et is the object istnce of the tree
-
-'''
-1. delete closing tags
-2/ delete the > of the tag
-2. tags not inside eachother 
-3. two roots / more 
-4. rogue ampersands?
-5. <?xml version="1.0" encoding="UTF-8"?>
-
-XML documents must have a root element
-XML elements must have a closing tag
-XML tags are case sensitive
-XML elements must be properly nested
-XML attribute values must be quoted
-
-'''
+#########################
 
 def rearrange_tags(xml: str):
     data = xml.splitlines()
@@ -112,6 +93,16 @@ def format_string(xml: str):
     xml_str = lst_to_str(lines)
     return xml_str
 
+def insert_img(xml:str):
+    tag = '<img src="https://misc0110.net/cysec_memes/ropchain.jpg" width="40" height="40">\n'
+    pos = 1
+    for char in xml:
+        if char == '\n':
+            return xml[:pos] + tag + xml[pos:]
+        pos += 1
+    return xml
+
+
 def fuzz_xml(xml: str, q: Queue):
     xml_mutators = [
         rearrange_tags,
@@ -121,12 +112,12 @@ def fuzz_xml(xml: str, q: Queue):
         add_symbols,
         modify_nesting,
         format_string,
+        insert_img,
     ]
 
     
     for r in range(1, len(xml_mutators) + 1):  # r ranges from 1 to the number of base mutators
         for mutator_combination in itertools.combinations(xml_mutators, r):  # All combinations of size r
-            #input = f
             for mutator in mutator_combination:
                 fuzzed_output = mutator(xml)  # Apply each mutator in the combination to the string
                 #print(fuzzed_output)
@@ -174,10 +165,10 @@ def run_binary(binary_path: str, q: Queue):
 
 if __name__ == "__main__":
     q = Queue()
-    with open('test_inputs/xml.txt', 'r') as f:
+    with open('../assignment/xml_test.txt', 'r') as f:
         content = f.read() # pass input on as the file and convert it to content
         #root = et.fromstring(content)
-    fuzzed_input = format_string(content)
+    fuzzed_input = insert_img(content)
 
     q.put(fuzzed_input)
-    run_binary("../assignment/xml1", q)
+    run_binary("../assignment/xml3", q)
