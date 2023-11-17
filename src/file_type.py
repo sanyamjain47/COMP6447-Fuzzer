@@ -1,5 +1,7 @@
 import json
 import csv
+import os
+import xml.etree.ElementTree as et
 
 def read_and_determine_data(file_path):
     with open(file_path, 'r') as f:
@@ -20,6 +22,8 @@ def read_and_determine_data(file_path):
         for row in csv_data:
             output.append(','.join([str(row[field]) for field in csv_fieldnames]))
         return '\n'.join(output),"CSV"
+    elif file_type == 'XML':
+        return content, "XML"
     else:
         return content,"Plaintext"
 
@@ -31,6 +35,12 @@ def determine_input_type(input_string):
         pass
 
     try:
+        root = et.fromstring(input_string)
+        return "XML"
+    except et.ParseError:
+        pass
+
+    try:
         csv_reader = csv.reader(input_string.splitlines())
         for _ in csv_reader:
             break  # If reading as CSV succeeds even for one line, it's considered valid
@@ -39,8 +49,6 @@ def determine_input_type(input_string):
         pass
 
     return "Plaintext"
-
-import os
 
 def file_exists(file_path: str) -> bool:
     return os.path.isfile(file_path)
