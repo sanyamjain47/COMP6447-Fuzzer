@@ -28,6 +28,7 @@ def run_binary_and_check_segfault(binary_path, q):
         else:
             # Sleep for a short duration to avoid busy-waiting
             time.sleep(5)
+        
 
 def generate_report(s: str, e):
     with open('bad.txt', 'a') as f:

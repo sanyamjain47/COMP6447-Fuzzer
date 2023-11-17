@@ -177,10 +177,10 @@ def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path):
                 all_possible_mutations.put(mutator_combination)
 
     # Start generator threads
-    generator_threads = multi_threaded_generator_xml(all_possible_mutations, xml, fuzzed_queue, num_threads=1)
+    generator_threads = multi_threaded_generator_xml(all_possible_mutations, xml, fuzzed_queue, num_threads=10)
 
     # Start harness threads
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=1)
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=10)
 
     # Wait for all generator and harness threads to complete
     for thread in generator_threads + harness_threads:
