@@ -13,17 +13,24 @@ import struct
 ## JPEG SPECIFIC METHODS ##
 ##########################
 
-def corrupt_header(jpeg_bytes):
-    header_length = 10  # Change as needed
-    for i in range(2, header_length):
-        jpeg_bytes[i] = random.randint(0, 255)
+def modify_header(jpeg_bytes, negative=False):
+    for i in range(2, 10):
+        if negative:
+            jpeg_bytes[i] = 0xFF + 1 + random.randint(-128, -1)
+        else:
+            jpeg_bytes[i] = random.randint(0, 255)
     return jpeg_bytes
 
-def insert_random_bytes(jpeg_bytes):
-    # Insert random bytes at a random position
+
+def insert_bytes(jpeg_bytes, variable_length=False, negative=False):
     position = random.randint(2, len(jpeg_bytes) - 1)
-    random_bytes = [random.randint(0, 255) for _ in range(random.randint(1, 5))]
-    return jpeg_bytes[:position] + bytearray(random_bytes) + jpeg_bytes[position:]
+    length = random.randint(1, 100) if variable_length else random.randint(1, 5)
+    if negative:
+        random_bytes = bytearray((0xFF + 1 + random.randint(-128, -1)) for _ in range(length))
+    else:
+        random_bytes = bytearray(random.randint(0, 255) for _ in range(length))
+    return jpeg_bytes[:position] + random_bytes + jpeg_bytes[position:]
+
 
 def remove_random_bytes(jpeg_bytes):
     # Remove a sequence of bytes from a random position
@@ -103,20 +110,12 @@ def reverse_segment(jpeg_bytes):
         jpeg_bytes[position:position+5] = segment[::-1]
     return jpeg_bytes
 
-def randomize_header(jpeg_bytes):
-    for i in range(2, 10):
-        jpeg_bytes[i] = random.randint(0, 255)
-    return jpeg_bytes
 
 def inject_nop_sled(jpeg_bytes):
     nop_sled = b'\x90' * random.randint(10, 100)
     position = random.randint(2, len(jpeg_bytes) - 1)
     return jpeg_bytes[:position] + nop_sled + jpeg_bytes[position:]
 
-def variable_length_extension(jpeg_bytes):
-    extra_data = bytearray(random.randint(0, 255) for _ in range(random.randint(1, 100)))
-    position = random.randint(2, len(jpeg_bytes) - 1)
-    return jpeg_bytes[:position] + extra_data + jpeg_bytes[position:]
 
 def negative_length_segment(jpeg_bytes):
     if len(jpeg_bytes) > 10:
@@ -160,8 +159,8 @@ def reverse_segment_negative(jpeg_bytes):
 
 def generate_jpeg_fuzzed_output(jpeg_bytes, fuzzed_queue, binary_path):
     jpeg_mutators = [
-        corrupt_header,
-        insert_random_bytes,
+        modify_header,
+        insert_bytes,
         remove_random_bytes,
         flip_random_bits,
         swap_segments,
@@ -171,9 +170,7 @@ def generate_jpeg_fuzzed_output(jpeg_bytes, fuzzed_queue, binary_path):
         inject_format_strings,
         duplicate_segment,
         reverse_segment,
-        randomize_header,
         inject_nop_sled,
-        variable_length_extension,
         negative_length_segment,
         negative_byte_injection,
         negative_offset_in_headers,
@@ -189,12 +186,12 @@ def generate_jpeg_fuzzed_output(jpeg_bytes, fuzzed_queue, binary_path):
     for r in range(1, len(jpeg_mutators) + 1):
         for mutator_combination in itertools.combinations(jpeg_mutators, r):
             all_possible_mutations.put(mutator_combination)
-
+    print(all_possible_mutations.qsize())
     # Start generator threads
-    generator_threads = multi_threaded_generator_jpeg(all_possible_mutations, jpeg_bytes, fuzzed_queue, num_threads=10)
+    generator_threads = multi_threaded_generator_jpeg(all_possible_mutations, jpeg_bytes, fuzzed_queue, num_threads=20)
 
     # Start harness threads
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=10)
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=20)
 
     # Wait for all generator and harness threads to complete
     for thread in generator_threads + harness_threads:
@@ -219,6 +216,7 @@ def generator_jpeg(mutator_queue, input_jpeg, fuzzed_queue):
                 fuzzed_output = mutator(fuzzed_output)
             fuzzed_queue.put({"input": fuzzed_output, "mutator": mutator_combination})
         else:
+            print("done")
             return
 
 def multi_threaded_harness(binary_path, fuzzed_queue, num_threads=5):
