@@ -62,7 +62,7 @@ def append_random_num_str(s: str):
 
 
 
-def generate_base_fuzzed_output(s: str, q):
+def generate_base_fuzzed_output(s: str, q: Queue):
     base_mutators = [
         delete_random_byte,
         insert_random_byte,

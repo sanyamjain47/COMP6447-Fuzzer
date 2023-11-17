@@ -7,7 +7,8 @@ from json_fuzzer import generate_json_fuzzed_output
 from xml_fuzzer import fuzz_xml
 
 # Corpus contains all the fuzzed inputs which give new code coverage
-#corpus = []
+# corpus = []
+# ltrace output of code 
 
 
 def start_csv(s: str, binary_path: str):

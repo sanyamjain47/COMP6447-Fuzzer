@@ -16,7 +16,7 @@ def rearrange_tags(xml: str):
     index2 = random.randrange(len(data))
 
     # swapping tag1 and tag2 position
-    tag1 = data[index1] # tag1
+    tag1 = data[index1]
     data[index1] = data[index2]
     data[index2] = tag1
 
@@ -45,8 +45,6 @@ def remove_key_symbols(xml: str):
     # print('pos = ', pos)
     # print(xml[:pos] + xml[pos+1:])
     # print("removed byte ", repr(xml[pos]))
-
-    #TODO: maybe not necessary as basic functions will cover (but more randomly)
     return xml[:pos] + xml[pos+1:]
 
 # Returns the xml with various char capitalised
@@ -116,25 +114,14 @@ def fuzz_xml(xml: str, q: Queue):
     ]
 
     
-    for r in range(1, len(xml_mutators) + 1):  # r ranges from 1 to the number of base mutators
-        for mutator_combination in itertools.combinations(xml_mutators, r):  # All combinations of size r
+    for r in range(1, len(xml_mutators) + 1):  
+        for mutator_combination in itertools.combinations(xml_mutators, r):  
             for mutator in mutator_combination:
-                fuzzed_output = mutator(xml)  # Apply each mutator in the combination to the string
+                fuzzed_output = mutator(xml) 
                 #print(fuzzed_output)
                 #log.info("Currently mutatating using: {}".format(mutator))
             q.put(fuzzed_output)
     log.info('all combinations done in XML???')
-
-
-# def format_xml(file_path: str):
-#     data = []
-#     tree = et.parse(file_path)
-#     root = tree.getroot()
-#     for children in root:
-#         for sub_elements in children:
-#             data.append(sub_elements)
-
-#     return data
 
 def lst_to_str(lst):
     xml = ""
