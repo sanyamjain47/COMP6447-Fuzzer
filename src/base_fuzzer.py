@@ -7,11 +7,11 @@ from pwn import log
 ## BASIC METHODS ##
 ###################
 
-# Flips one bit of a character in a string
+# Flips 1-8 bits of a character in a string (bit or byte flipping)
 def bit_flip(s: str):
     if not s:
         return s
-    
+
     pos = random.randint(0, len(s) - 1)
     char = s[pos]
     bits_to_flip = random.randint(1, 7)
@@ -21,12 +21,11 @@ def bit_flip(s: str):
     return s[:pos] + char + s[pos+1:]
 
 
-
 # Deletes a random character from the string
 def delete_random_byte(s: str):
     if not s:
         return s
-    
+
     pos = random.randint(0, len(s) - 1)
     length = random.randint(1, len(s) - pos)
     return s[:pos] + s[pos+length:]
@@ -43,7 +42,7 @@ def insert_random_byte(s: str):
 def append_random_num_bytes(s: str):
     if not s:
         return s
-    
+
     num_bytes = random.randint(1, 50)
     random_char = chr(random.randrange(32,127))
     return s + (num_bytes * random_char)
@@ -54,7 +53,7 @@ def append_random_num_bytes(s: str):
 def append_random_num_str(s: str):
     if not s:
         return s
-    
+
     lower_bound = random.randint(0, len(s) - 1)
     upper_bound = random.randint(lower_bound, len(s))
     multiplier = random.randint(1, 10)
