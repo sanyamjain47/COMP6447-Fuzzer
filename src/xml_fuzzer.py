@@ -113,7 +113,6 @@ def fuzz_xml(xml: str, q: Queue):
         insert_img,
     ]
 
-    
     for r in range(1, len(xml_mutators) + 1):  
         for mutator_combination in itertools.combinations(xml_mutators, r):  
             for mutator in mutator_combination:
@@ -121,7 +120,7 @@ def fuzz_xml(xml: str, q: Queue):
                 #print(fuzzed_output)
                 #log.info("Currently mutatating using: {}".format(mutator))
             q.put(fuzzed_output)
-    log.info('all combinations done in XML???')
+    log.info('All XML fuzzer combinations done')
 
 def lst_to_str(lst):
     xml = ""

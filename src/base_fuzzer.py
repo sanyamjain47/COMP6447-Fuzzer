@@ -59,9 +59,6 @@ def append_random_num_str(s: str):
     multiplier = random.randint(1, 10)
     return s + (s[lower_bound: upper_bound] * multiplier)
 
-
-
-
 def generate_base_fuzzed_output(s: str, q: Queue):
     base_mutators = [
         delete_random_byte,
@@ -84,7 +81,7 @@ def generate_base_fuzzed_output(s: str, q: Queue):
                 q.put(fuzzed_output)
                 all_mets.add(mutator_combination)
     #print(all_mets)
-    log.info('all combinations done???')
+    log.info('All base fuzzer combinations done')
     #generate_base_fuzzed_output(s,q)
 
 # Test it out
