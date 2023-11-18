@@ -14,9 +14,13 @@ def run_binary_bytes(binary_path, q):
         if not q.empty():
             input_data = q.get()['input']
             try:
-                trace_cmd = f"ltrace -o trace_output.txt {binary_path}"
+                trace_cmd = f"ltrace {binary_path}"
                 process = subprocess.run(trace_cmd, input=input_data, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                print("Standard Output:", process.stdout.decode())
+                print("Standard Error:", process.stderr.decode())
             except subprocess.CalledProcessError as e:
+                print("Standard Output:", e.stdout.decode())
+                print("Standard Error:", e.stderr.decode())
                 if e.returncode in [-11, -6]:
                     print(f"An error occurred with exit code: {e.returncode}")
                     terminate_flag.set()
@@ -30,7 +34,6 @@ def run_binary_bytes(binary_path, q):
 
     print("Exiting run_binary_bytes")
 
-
 # Ensure that threads check the terminate_flag regularly and terminate if it's set
 
 
@@ -42,9 +45,18 @@ def run_binary_string(binary_path, q):
         if not q.empty():
             input_data = q.get()['input']
             try:
+                # Convert the string input_data to bytes
                 input_data = input_data.encode('utf-8')
-                process = subprocess.run([binary_path], input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                # Prefix the binary path with ltrace
+                trace_cmd = f'strace {binary_path}'
+                # Run the command with ltrace
+                process = subprocess.run(trace_cmd, input=input_data, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                # Print the standard output and standard error
+                print("Standard Output:", process.stdout.decode())
+                print("Standard Error:", process.stderr.decode())
             except subprocess.CalledProcessError as e:
+                print("Standard Output:", e.stdout.decode())
+                print("Standard Error:", e.stderr.decode())
                 if e.returncode in [-11, -6]:
                     print(f"An error occurred with exit code: {e.returncode}")
                     terminate_flag.set()
@@ -56,4 +68,3 @@ def run_binary_string(binary_path, q):
         else:
             time.sleep(5)
             print(5)
-
