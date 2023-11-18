@@ -167,14 +167,16 @@ def format_string(xml: str):
     xml_str = lst_to_str(lines)
     return xml_str
 
-def insert_img(xml:str):
-    tag = '<img src="https://misc0110.net/cysec_memes/ropchain.jpg" width="40" height="40">\n'
-    pos = 1
-    for char in xml:
-        if char == '\n':
-            return xml[:pos] + tag + xml[pos:]
-        pos += 1
-    return xml
+def insert_nested_tags(xml: str):
+    nesting = '<new-tag class="nesting"></new-tag><div class="classy" id="1"><a class="classy" href="http://comp6447.lol">this link looks sus</a><link class="classy" href="http://comp6447.lol" /><span class="classy">text</span><link class="classy" href="http://comp6447.lol" /></div><div class="classy" data="when" name="adam" /><div class="classy"><a class="classy" href="http://comp6447.lol">this link looks sus</a><span class="classy">text</span><new-tag class="nesting"></new-tag><new-tag class="nesting"></new-tag></div><span class="classy" id="666">software engineers are questy</span><new-tag class="nesting"></new-tag><span class="classy" id="666"></span><new-tag class="nesting"></new-tag><span class="classy" id="666">software engineers are questy</span><fam class="classy" id="fam">nah</fam><div class="classy" id="90"><a class="classy" href="http://comp6447.lol">This link looks sus</a><link class="classy" href="http://comp6447.lol" /><span class="classy">text</span></div><new-tag class="nesting"></new-tag><fam class="classy" id="fam">cringe</fam><span class="classy" id="666">software engineers are questy</span><fam class="classy" id="fam">cringe</fam><new-tag class="nesting"></new-tag><new-tag class="nesting"></new-tag><div class="classy" id="90"><a class="classy" href="http://comp6447.lol">this link looks sus</a><link class="classy" href="http://comp6447.lol" /><span class="classy">text</span></div><new-tag class="nesting"></new-tag><new-tag class="nesting"></new-tag><link class="classy" href="http://comp6447.lol" /><new-tag class="nesting"></new-tag>'
+    data = xml.splitlines()
+
+    line1 = random.randint(1, len(data)-2)
+    line2 = random.randint(1, len(data)-2)
+    data[line1] = data[line1] + '\n\t' + nesting
+    data[line2] = data[line2] + '\n\t' + nesting
+    #print(lst_to_str(data))
+    return lst_to_str(data)
 
 def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path):
     xml_mutators = [
@@ -185,12 +187,12 @@ def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path):
         add_symbols,
         modify_nesting,
         format_string,
-        insert_img,
         duplicate_tags,
         remove_random_tags,
         random_attribute_injection,
         change_tag_names,
-        break_tag_structure
+        break_tag_structure,
+        insert_nested_tags
     ]
 
     all_possible_mutations = Queue()
@@ -247,12 +249,32 @@ def lst_to_str(lst):
     return xml
             
 
+
+def run_binary(binary_path: str, q: Queue):
+
+    input_data = q.get()
+
+    p = process(binary_path)
+    p.sendline(input_data.encode())
+
+    try:
+        p = subprocess.run([binary_path], input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        if e.returncode == -11:
+            print(f"An error occurred with exit code: {e.returncode}")
+            print(f"The input the caused the error has been put in bad.txt")
+            sys.exit()
+        else:
+            print(f"An error occurred with exit code: {e.returncode}")
+    print("No errors found")
+
 if __name__ == "__main__":
     q = Queue()
-    with open('../assignment/xml_test.txt', 'r') as f:
+    with open('../assignment/xml1.txt', 'r') as f:
         content = f.read() # pass input on as the file and convert it to content
         #root = et.fromstring(content)
-    fuzzed_input = insert_img(content)
+    fuzzed_input = insert_nested_tags(content)
 
     q.put(fuzzed_input)
-    # run_binary("../assignment/xml3", q)
+    run_binary("../assignment/xml2", q)
+
