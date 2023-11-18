@@ -14,31 +14,51 @@ from threading import Thread
 
 def duplicate_tags(xml: str):
     data = xml.splitlines()
-    index = random.randrange(len(data))
-    tag = data[index]
-    # Inserting the duplicate tag right after the original
-    data.insert(index + 1, tag)
-    return lst_to_str(data)
+    # Find lines that contain XML tags
+    tag_lines = [index for index, line in enumerate(data) if re.search(r'<[^>]+>', line)]
+
+    # Proceed only if there are tag lines
+    if tag_lines:
+        index = random.choice(tag_lines)
+        tag = data[index]
+        # Inserting the duplicate tag right after the original
+        data.insert(index + 1, tag)
+
+    return '\n'.join(data)
 
 def remove_random_tags(xml: str):
     data = xml.splitlines()
-    if len(data) > 1:
-        index = random.randrange(len(data))
-        del data[index]
-    return lst_to_str(data)
+    # Regular expression to identify lines with tags
+    tag_pattern = re.compile(r'<[^>]+>')
+
+    # Find lines that contain tags
+    tag_lines = [index for index, line in enumerate(data) if tag_pattern.search(line)]
+
+    # Proceed only if there are tag lines
+    if tag_lines:
+        # Randomly select a tag line to remove
+        index_to_remove = random.choice(tag_lines)
+        del data[index_to_remove]
+
+    return '\n'.join(data)
 
 def random_attribute_injection(xml: str):
     data = xml.splitlines()
-    for i, line in enumerate(data):
-        start = line.find('<')
-        end = line.find('>')
-        # Check if it's a valid tag and not a closing tag
-        if start != -1 and end != -1 and '/' not in line[start:end]:
-            new_attr = f' randomAttr{random.randint(0, 100)}="value"'
-            # Insert the new attribute just before the closing '>'
-            data[i] = line[:end] + new_attr + line[end:]
-    return lst_to_str(data)
+    # Regular expression to identify valid tags for attribute injection
+    tag_pattern = re.compile(r'<[^!?][^>]*[^/]')
 
+    # Find lines that contain valid tags
+    valid_tag_lines = [index for index, line in enumerate(data) if tag_pattern.search(line)]
+
+    # Inject attribute into randomly selected valid tags
+    for index in valid_tag_lines:
+        line = data[index]
+        new_attr = f' randomAttr{random.randint(0, 100)}="value"'
+        # Find the position to insert the new attribute
+        insert_pos = line.rfind('>')
+        data[index] = line[:insert_pos] + new_attr + line[insert_pos:]
+
+    return '\n'.join(data)
 
 
 def change_tag_names(xml: str):
@@ -64,18 +84,21 @@ def break_tag_structure(xml: str):
 
 def rearrange_tags(xml: str):
     data = xml.splitlines()
+    # Regular expression to identify lines with tags
+    tag_pattern = re.compile(r'<[^>]+>')
 
-    index1 = random.randrange(len(data)) # len data - 1?
-    index2 = random.randrange(len(data))
+    # Find lines that contain tags
+    tag_lines = [index for index, line in enumerate(data) if tag_pattern.search(line)]
 
-    # swapping tag1 and tag2 position
-    tag1 = data[index1]
-    data[index1] = data[index2]
-    data[index2] = tag1
+    # Proceed only if there are at least two tag lines
+    if len(tag_lines) > 1:
+        # Randomly select two different tag lines to swap
+        index1, index2 = random.sample(tag_lines, 2)
 
-    # print("Swapping {} and {} to get:".format(data[index1], data[index2]))
-    xml_str = lst_to_str(data)
-    return xml_str 
+        # Swapping tag1 and tag2 positions
+        data[index1], data[index2] = data[index2], data[index1]
+
+    return '\n'.join(data)
 
 # XML files are only valid if there is one root 
 # returns a new xml str with 2 roots (same tag)
