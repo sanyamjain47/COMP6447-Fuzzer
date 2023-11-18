@@ -4,7 +4,7 @@ import sys
 import subprocess
 
 
-def run_binary_and_check_segfault(binary_path, q):
+def run_binary_and_check_segfault(binary_path, q: Queue):
     start_time = time.time()
     time_limit = 150  # 150 seconds
     
@@ -29,8 +29,12 @@ def run_binary_and_check_segfault(binary_path, q):
             # Sleep for a short duration to avoid busy-waiting
             time.sleep(5)
 
+def run_strings(binary_path):
+    return subprocess.check_output(["/bin/strings", "-s|", "-d", binary_path], stderr=subprocess.PIPE)
+        
 def generate_report(s: str, e):
     with open('bad.txt', 'a') as f:
         f.write("Input causing the error:\n{}\n".format(s))
         f.write("Error code: {}\n".format(e.returncode))
         f.write("=" * 40 + "\n")  # Add a separator for readability
+
