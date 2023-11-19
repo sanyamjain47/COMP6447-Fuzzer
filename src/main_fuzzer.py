@@ -6,6 +6,9 @@ from json_fuzzer import generate_json_fuzzed_output
 from xml_fuzzer import generate_xml_fuzzed_output
 from jpeg_fuzzer import generate_jpeg_fuzzed_output
 from plaintext_fuzzer import generate_plain_fuzzed_output
+from library import ThreadOutput
+from harness import run_strings
+
 
 # Corpus contains all the fuzzed inputs which give new code coverage
 # corpus = []
@@ -44,8 +47,13 @@ def start_jpeg(s: bytes, binary_path: str):
 
 def start_json(s: str, binary_path: str):
     fuzzed_input = Queue()
+    fuzzed_output = Queue()
 
-    generate_json_fuzzed_output(s, fuzzed_input,binary_path)
+    keywords = ThreadOutput(target=run_strings, args=(binary_path,))
+    keywords.start()
+    k = keywords.join().decode().split("|")
+
+    generate_json_fuzzed_output(s, fuzzed_input,binary_path,fuzzed_output, k)
 
 
 def start_xml(s:str, binary_path: str):
@@ -68,11 +76,14 @@ def start_txt(s:str, binary_path: str):
 
     fuzzed_input = Queue()
     fuzzed_output = Queue()
+    keywords = ThreadOutput(target=run_strings, args=(binary_path,))
+    keywords.start()
 
     fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
     fuzz_generator_thread.start()
+    k = keywords.join().decode().split("|")
 
-    txtfuzz_generator_thread = Thread(target=generate_plain_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    txtfuzz_generator_thread = Thread(target=generate_plain_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output, k))
     txtfuzz_generator_thread.start()
 
 

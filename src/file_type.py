@@ -27,7 +27,8 @@ def read_and_determine_data(file_path):
             output.append(','.join(csv_fieldnames))
         for row in csv_data:
             output.append(','.join([str(row[field]) for field in csv_fieldnames]))
-        return '\n'.join(output),"CSV"
+        if "," in content_decoded.splitlines()[0]:
+            return '\n'.join(output),"CSV"
     elif file_type == 'XML':
         return content.decode(), "XML"
     else:
@@ -76,3 +77,4 @@ def check_file(file_path:str, mode: str) -> bool:
         print(f"{file_path} doesn't have appropriate permissions")
         return False
     return True
+

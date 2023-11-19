@@ -7,7 +7,7 @@ import logging
 import logging.config
 
 # Assuming 'logging.conf' is correctly set up in the same directory
-logging.config.fileConfig('logging.conf')
+logging.config.fileConfig('src/logging.conf')
 logger = logging.getLogger(__name__)
 
 # Global counters

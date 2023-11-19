@@ -7,10 +7,10 @@ import itertools
 from queue import Queue
 from random import randint, choice
 from re import findall
-from copy import copy
 import threading
 import time
 import random
+
 from harness import run_binary_string
 # Global flag to indicate whether to terminate threads
 terminate_threads_flag = False
@@ -91,7 +91,7 @@ def extend(s: str, _):
 def double_it(s: str, _):
     return s + s
 
-def generate_plain_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
+def generate_plain_fuzzed_output(df, fuzzed_queue, binary_path, output_queue, keywords):
     plain_mutator = [
         decrement_random_byte,
         increment_random_byte,
@@ -118,7 +118,7 @@ def generate_plain_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
 
     
     # Start generator threads
-    generator_threads = multi_threaded_generator_txt(all_possible_mutations, df, fuzzed_queue, num_threads=20)
+    generator_threads = multi_threaded_generator_txt(all_possible_mutations, df, fuzzed_queue, keywords, num_threads=20)
 
     # Start harness threads
     harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=20)
@@ -129,7 +129,7 @@ def generate_plain_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
     for thread in generator_threads + harness_threads + loop_back_threads:
         thread.join()
 
-def multi_threaded_generator_txt(mutator_queue, input, fuzzed_queue, num_threads=5):
+def multi_threaded_generator_txt(mutator_queue, input, fuzzed_queue, keywords, num_threads=5):
     threads = []
 
     def thread_target():
@@ -143,7 +143,7 @@ def multi_threaded_generator_txt(mutator_queue, input, fuzzed_queue, num_threads
                 mutator_combination = mutator_queue.get()
                 fuzzed_output = input
                 for mutator in mutator_combination:
-                    fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                    fuzzed_output = mutator(fuzzed_output, keywords)  # Apply each mutator in the combination to the string
                 fuzzed_queue.put({"input": fuzzed_output, "mutator": mutator_combination})
             else:
                 return

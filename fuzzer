@@ -1,3 +1,4 @@
 #! /bin/sh
+# maybe go through the steps of install manually if this dosen't work and then run it
 echo "python3 src/main.py $1 $2"
 python3 src/main.py $1 $2

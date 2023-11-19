@@ -1,4 +1,7 @@
 #!/bin/sh
+echo "please install Ltrace"
+sudo apt-get install ltrace
+sudo apt-get install strings
 python3 -m pip install --user virtualenv
 virtualenv venv
 source venv/bin/activate
