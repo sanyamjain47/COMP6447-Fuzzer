@@ -12,6 +12,7 @@ import string
 ## CSV SPECIFIC METHODS ##
 ##########################
 
+
 def read_csv_to_list_of_lists(file_path):
     data = []
     try:
@@ -160,7 +161,20 @@ def list_of_lists_to_csv(lst_lst):
         csv_string += csv_row + "\n"
     return csv_string
 
-def generate_csv_fuzzed_output(df, fuzzed_queue, binary_path):
+# Global flag to indicate whether to terminate threads
+terminate_threads_flag = False
+
+# thread-safe int
+function_count_lock = threading.Lock()
+first_count = -1
+base_input = None
+
+# Function to set the terminate flag
+def set_terminate_flag():
+    global terminate_threads_flag
+    terminate_threads_flag = True
+
+def generate_csv_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
     csv_mutator = [
         inconsistent_data_types,
         negative_numbers,
@@ -176,62 +190,105 @@ def generate_csv_fuzzed_output(df, fuzzed_queue, binary_path):
     ]
     df = csv_to_list_of_list(df)
     all_possible_mutations = Queue()
+    list_all_possible_mutations = []
     for count in range(10):
         for r in range(1, len(csv_mutator) + 1):
             for mutator_combination in itertools.combinations(csv_mutator, r):
                 all_possible_mutations.put(mutator_combination)
+                list_all_possible_mutations.append(mutator_combination)
+    
     print(all_possible_mutations.qsize())
-
     # Start generator threads
-    generator_threads = multi_threaded_generator_csv(all_possible_mutations, df, fuzzed_queue, num_threads=1)
+    generator_threads = multi_threaded_generator_csv(all_possible_mutations, df, fuzzed_queue, num_threads=5)
 
     # Start harness threads
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=1)
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5)
 
-    # Wait for all generator and harness threads to complete
-    for thread in generator_threads + harness_threads:
-        thread.join()
+
+    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=5)
+
+    
 
 def multi_threaded_generator_csv(mutator_queue, input, fuzzed_queue, num_threads=5):
     threads = []
-    def thread_target():
-        generator_csv(mutator_queue, input, fuzzed_queue)
-    for _ in range(num_threads):
-        thread = threading.Thread(target=thread_target)
-        threads.append(thread)
-        thread.start()
-    return threads  # Return the list of threads instead of joining them here
 
-def multi_threaded_harness(binary_path, fuzzed_queue, num_threads=5):
-    threads = []
     def thread_target():
-        run_binary_string(binary_path, fuzzed_queue)
+        while True:
+            if not mutator_queue.empty():
+                mutator_combination = mutator_queue.get()
+                fuzzed_output = input
+                for mutator in mutator_combination:
+                    fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                csv_string = list_of_lists_to_csv(fuzzed_output)
+                fuzzed_queue.put({"input": csv_string, "mutator": mutator_combination})
+            else:
+                break
+        print("exiting generator")
+
     for _ in range(num_threads):
         thread = threading.Thread(target=thread_target)
         threads.append(thread)
         thread.start()
+
+    
     return threads
 
-def generator_csv(mutator_queue, input, fuzzed_queue):
-    while True:
-        if not mutator_queue.empty():
-            mutator_combination = mutator_queue.get()
-            fuzzed_output = input
+
+def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5):
+    threads = []
+
+    def thread_target():
+        run_binary_string(binary_path, fuzzed_queue, output_queue)
+
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    return threads
+
+def loop_back_generator(input_queue,output_queue, all_mutations):
+    global first_count
+    global base_input
+    while not terminate_threads_flag and not output_queue.empty():
+        with function_count_lock:
+            fuzzed_output = output_queue.get()['input']
+            function_count = output_queue.get()['count']
+
+            if first_count == -1:
+                first_count = function_count
+                base_input = fuzzed_output
+
+
+        # Take all values from the output queue
+        values_to_process = list(output_queue.get()['input'])
+        values_to_process.append(fuzzed_output)
+        # Mutate each value with the chosen mutator combination
+        mutated_values = []
+        for value_info in values_to_process:
+            mutated_value = random.choice([value_info,base_input])
+            mutator_combination = random.choice(all_mutations)
+
             for mutator in mutator_combination:
-                fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
-            csv_string = list_of_lists_to_csv(fuzzed_output)
-            fuzzed_queue.put({"input":csv_string,"mutator":mutator_combination})
-        else:
+                try:
+                    mutated_value = mutator(mutated_value)
+                except:
+                    continue
+            mutated_values.append({"input": mutated_value, "mutator": mutator_combination})
 
-            return
+        # Put the mutated values back into the queue
+        for mutated_value_info in mutated_values:
+            input_queue.put(mutated_value_info)
 
+def multi_threaded_loop_back_generator(input_queue,output_queue, all_mutations, num_threads=5):
+    threads = []
 
-# Test it out
-if __name__ == "__main__":
+    def thread_target():
+        loop_back_generator(input_queue,output_queue, all_mutations)
 
-    df = read_csv_to_list_of_lists("../assignment/csv1.txt")
-    temp = add_many_rows(df)
-    csv_string = list_of_lists_to_csv(temp)
-    # print(csv_string)
-    run_binary_and_check_segfault("../assignment/csv1",csv_string)
-#    generate_csv_fuzzed_output(df)
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    return threads
