@@ -1,16 +1,17 @@
-import random
+"""
+###########################
+## plaintext SPECIFIC METHODS ##
+###########################
+"""
 import itertools
 from queue import Queue
-from pwn import log
+from random import randint, choice
+from re import findall
+from copy import copy
 import threading
 import time
+import random
 from harness import run_binary_string
-from queue import Queue
-from threading import Thread
-import time
-import string
-
-
 # Global flag to indicate whether to terminate threads
 terminate_threads_flag = False
 
@@ -19,97 +20,119 @@ function_count_lock = threading.Lock()
 first_count = -1
 base_input = None
 
+def increment_random_number(s: str, _):
+    numbers = findall(r'\d+', s)
 
-###################
-## BASIC METHODS ##
-###################
+    if not numbers:
+        return s
 
-# Flips 1-8 bits of a character in a string (bit or byte flipping)
-def bit_flip(s: str):
+    random_number = choice(numbers)
+    incremented_number = str(int(random_number) + 1)
+    return s.replace(random_number, incremented_number, 1)
+
+def decrement_random_number(s: str, _):
+    numbers = findall(r'\d+', s)
+
+    if not numbers:
+        return s
+
+    random_number = choice(numbers)
+    incremented_number = str(int(random_number) - 1)
+    return s.replace(random_number, incremented_number, 1)
+
+def increment_random_byte(s: str, _):
     if not s:
         return s
 
-    pos = random.randint(0, len(s) - 1)
+    pos = randint(0, len(s)-1)
+    return s[:pos] + chr(ord(s[pos])+1) + s[pos+1:]
+
+def decrement_random_byte(s: str, _):
+    if not s:
+        return s
+    pos = randint(0, len(s)-1)
+    
+    return s[:pos] + chr(ord(s[pos])-1) + s[pos+1:]
+
+def bit_flip(s: str, _):
+    if not s:
+        return s
+    pos = randint(0, len(s) - 1)
     char = s[pos]
-    bits_to_flip = random.randint(1, 7)
+    bits_to_flip = randint(1, 7)
     for _ in range(bits_to_flip):
-        bit = 1 << random.randint(0, 6)
+        bit = 1 << randint(0, 6)
         char = chr(ord(char) ^ bit)
     return s[:pos] + char + s[pos+1:]
 
+def replace_with_keyword(_, keywords):
+    return choice(keywords)
 
-# Deletes a random character from the string
-def delete_random_byte(s: str):
-    if not s:
-        return s
+def append_keyword(s: str, keywords):
+    return s + choice(keywords)
 
-    pos = random.randint(0, len(s) - 1)
-    length = random.randint(1, len(s) - pos)
-    return s[:pos] + s[pos+length:]
+def null_byte(s: str, _):
+    return s + "\x00"
 
+def new_line(s: str, _):
+    return s + "\n"
 
-def insert_random_byte(s: str):
-    pos = random.randint(0, len(s))
-    length = random.randint(1, 10)
-    random_bytes = ''.join(chr(random.randrange(32,127)) for _ in range(length))
-    return s[:pos] + random_bytes + s[pos:]
+def special_char(s: str, _):
+    specials = ["~", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "-", "_", "+", "=", "{", "}", "]", "[", "|", "\\", "`", ",", ".", "/", "?", ";", ":", "'", "<"]
+    return s + choice(specials)
+    
 
+def f_string(s: str, _):
+    return s + "%s%s%s%s%s%s"
 
-# Adds a random number of characters to the end of the text files
-def append_random_num_bytes(s: str):
-    if not s:
-        return s
+def extend(s: str, _):
+    return s + "A" * 127
 
-    num_bytes = random.randint(1, 50)
-    random_char = chr(random.randrange(32,127))
-    return s + (num_bytes * random_char)
+def double_it(s: str, _):
+    return s + s
 
-
-# To the end of the input, appends a substring, x number of times
-# this breaks csv1 after a number of runs
-def append_random_num_str(s: str):
-    if not s:
-        return s
-
-    lower_bound = random.randint(0, len(s) - 1)
-    upper_bound = random.randint(lower_bound, len(s))
-    multiplier = random.randint(1, 10)
-    return s + (s[lower_bound: upper_bound] * multiplier)
-
-def generate_base_fuzzed_output(s: str, fuzzed_queue, binary_path, output_queue):
-    base_mutators = [
-        delete_random_byte,
-        insert_random_byte,
+def generate_plain_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
+    plain_mutator = [
+        decrement_random_byte,
+        increment_random_byte,
+        decrement_random_number,
+        increment_random_number,
         bit_flip,
-        append_random_num_bytes,
-        append_random_num_str
+        replace_with_keyword,
+        append_keyword,
+        null_byte,
+        new_line,
+        special_char,
+        f_string,
+        extend,
+        double_it,
     ]
+
     all_possible_mutations = Queue()
     list_all_possible_mutations = []
-    for count in range(10):
-        for r in range(1, len(base_mutators) + 1):
-            for mutator_combination in itertools.combinations(base_mutators, r):
+    for count in range(10):  # Adjust this count as needed
+        for r in range(1, len(plain_mutator) + 1):
+            for mutator_combination in itertools.combinations(plain_mutator, r):
                 all_possible_mutations.put(mutator_combination)
                 list_all_possible_mutations.append(mutator_combination)
+
     
     # Start generator threads
-    generator_threads = multi_threaded_generator_csv(all_possible_mutations, s, fuzzed_queue, num_threads=2)
+    generator_threads = multi_threaded_generator_txt(all_possible_mutations, df, fuzzed_queue, num_threads=20)
 
     # Start harness threads
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=2)
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=20)
 
 
-    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=2)
+    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=10)
     
     for thread in generator_threads + harness_threads + loop_back_threads:
         thread.join()
 
-
-def multi_threaded_generator_csv(mutator_queue, input, fuzzed_queue, num_threads=5):
+def multi_threaded_generator_txt(mutator_queue, input, fuzzed_queue, num_threads=5):
     threads = []
 
     def thread_target():
-        count = 0
         start_time = time.time()
         time_limit = 160  # 150 seconds
         while True:
