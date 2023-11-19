@@ -2,6 +2,23 @@ import random
 import itertools
 from queue import Queue
 from pwn import log
+import threading
+import time
+from harness import run_binary_string
+from queue import Queue
+from threading import Thread
+import time
+import string
+
+
+# Global flag to indicate whether to terminate threads
+terminate_threads_flag = False
+
+# thread-safe int
+function_count_lock = threading.Lock()
+first_count = -1
+base_input = None
+
 
 ###################
 ## BASIC METHODS ##
@@ -59,7 +76,7 @@ def append_random_num_str(s: str):
     multiplier = random.randint(1, 10)
     return s + (s[lower_bound: upper_bound] * multiplier)
 
-def generate_base_fuzzed_output(s: str, q: Queue):
+def generate_base_fuzzed_output(s: str, fuzzed_queue, binary_path, output_queue):
     base_mutators = [
         delete_random_byte,
         insert_random_byte,
@@ -67,23 +84,121 @@ def generate_base_fuzzed_output(s: str, q: Queue):
         append_random_num_bytes,
         append_random_num_str
     ]
-    all_mets = set()
-    q.put(s)
-    for r in range(1, len(base_mutators) + 1):  # r ranges from 1 to the number of base mutators
-        for mutator_combination in itertools.combinations(base_mutators, r):  # All combinations of size r
-            #log.info("mutator_combination = {}".format(mutator_combination))
-            for i in range(5): # 10 is a constant to run every type of combination atleast 10 times. Can be reduced
-                fuzzed_output = s
+    all_possible_mutations = Queue()
+    list_all_possible_mutations = []
+    for count in range(10):
+        for r in range(1, len(base_mutators) + 1):
+            for mutator_combination in itertools.combinations(base_mutators, r):
+                all_possible_mutations.put(mutator_combination)
+                list_all_possible_mutations.append(mutator_combination)
+    
+    print(all_possible_mutations.qsize())
+    # Start generator threads
+    generator_threads = multi_threaded_generator_csv(all_possible_mutations, s, fuzzed_queue, num_threads=2)
+
+    # Start harness threads
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=2)
+
+
+    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=2)
+    
+    for thread in generator_threads + harness_threads + loop_back_threads:
+        thread.join()
+
+
+def multi_threaded_generator_csv(mutator_queue, input, fuzzed_queue, num_threads=5):
+    threads = []
+
+    def thread_target():
+        count = 0
+        start_time = time.time()
+        time_limit = 160  # 150 seconds
+        while True:
+            new_time = time.time()
+            if new_time - start_time > time_limit:
+                return
+            if not mutator_queue.empty():
+                mutator_combination = mutator_queue.get()
+                fuzzed_output = input
                 for mutator in mutator_combination:
                     fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
-                    # print(fuzzed_output)
-                    # log.info("Currently mutatating using: {}".format(mutator))
-                q.put(fuzzed_output)
-                all_mets.add(mutator_combination)
-    #print(all_mets)
-    log.info('All base fuzzer combinations done')
-    #generate_base_fuzzed_output(s,q)
+                fuzzed_queue.put({"input": fuzzed_output, "mutator": mutator_combination})
+            else:
+                return
 
-# Test it out
-if __name__ == "__main__":
-    generate_base_fuzzed_output("test_string")
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    
+    return threads
+
+
+def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5):
+    threads = []
+
+    def thread_target():
+        run_binary_string(binary_path, fuzzed_queue, output_queue)
+        return
+
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    return threads
+
+def loop_back_generator(input_queue,output_queue, all_mutations):
+    global first_count
+    global base_input
+    start_time = time.time()
+    time_limit = 160  # 150 seconds
+
+    while True:
+        
+        new_time = time.time()
+        if new_time - start_time > time_limit:
+            return
+        if output_queue.empty():
+            time.sleep(5)
+        with function_count_lock:
+            fuzzed_output = output_queue.get()['input']
+            function_count = output_queue.get()['count']
+
+            if first_count == -1:
+                first_count = function_count
+                base_input = fuzzed_output
+
+
+        # Take all values from the output queue
+        values_to_process = list(output_queue.get()['input'])
+        values_to_process.append(fuzzed_output)
+        # Mutate each value with the chosen mutator combination
+        mutated_values = []
+        for value_info in values_to_process:
+            mutated_value = random.choice([value_info,base_input])
+            mutator_combination = random.choice(all_mutations)
+
+            for mutator in mutator_combination:
+                try:
+                    mutated_value = mutator(mutated_value)
+                except:
+                    continue
+            mutated_values.append({"input": mutated_value, "mutator": mutator_combination})
+
+        # Put the mutated values back into the queue
+        for mutated_value_info in mutated_values:
+            input_queue.put(mutated_value_info)
+
+def multi_threaded_loop_back_generator(input_queue,output_queue, all_mutations, num_threads=5):
+    threads = []
+
+    def thread_target():
+        loop_back_generator(input_queue,output_queue, all_mutations)
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    return threads

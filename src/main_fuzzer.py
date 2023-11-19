@@ -13,22 +13,17 @@ from xml_fuzzer import generate_xml_fuzzed_output
 def start_csv(s: str, binary_path: str):
     fuzzed_input = Queue()
     fuzzed_output = Queue()
-    
-    generate_csv_fuzzed_output(s, fuzzed_input,binary_path, fuzzed_output)
-    # fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input))
-    # fuzz_generator_thread.start()
 
-    # csvfuzz_generator_thread = Thread(target=generate_csv_fuzzed_output, args=(s, fuzzed_input))
-    # csvfuzz_generator_thread.start()
+    fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    fuzz_generator_thread.start()
 
-    # # Run this function in another thread concurrently
-    # binary_checker_thread = Thread(target=run_binary_and_check_segfault, args=(binary_path, fuzzed_input))
-    # binary_checker_thread.start()
+    csvfuzz_generator_thread = Thread(target=generate_csv_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    csvfuzz_generator_thread.start()
 
-    # # Wait for both threads to finish
-    # csvfuzz_generator_thread.join()
-    # fuzz_generator_thread.join()
-    # binary_checker_thread.join() # TODO FIX ISSUE WITH HANGING THREAD!
+
+    # Wait for both threads to finish
+    csvfuzz_generator_thread.join()
+    fuzz_generator_thread.join()
     
 
 
