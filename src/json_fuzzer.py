@@ -11,7 +11,7 @@ from library import PayloadJson
 import random
 import itertools
 import threading
-from harness import run_binary_string
+from harness import run_binary_string, run_strings
 from queue import Queue
 import time
 # Global flag to indicate whether to terminate threads
@@ -154,6 +154,7 @@ def fstrings(data: PayloadJson, _):
     key_tup = random.choice(keys_to_check)
     data.set_field(key_tup, "%s%s%s%s")
 
+
 def generate_json_fuzzed_output(df, q, keywords):
     json_mutator = [
         add_keywords,
@@ -175,6 +176,7 @@ def generate_json_fuzzed_output(df, q, keywords):
                     fuzzed_output = mutator(fuzzed_output, keywords)  # Apply each mutator in the combination to the string
                 json_string = str(fuzzed_output)
                 q.put(json_string)
+
 def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5):
     threads = []
 

@@ -47,6 +47,7 @@ def start_jpeg(s: bytes, binary_path: str):
 
 def start_json(s: str, binary_path: str):
     fuzzed_input = Queue()
+
     keywords = ThreadOutput(target=run_strings, args=(binary_path,))
     keywords.start()
 
