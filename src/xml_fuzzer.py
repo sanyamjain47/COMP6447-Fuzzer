@@ -5,12 +5,26 @@ import subprocess
 import sys
 import xml.etree.ElementTree as et
 from pwn import *
-from harness import run_binary_and_check_segfault
+from harness import run_binary_string
 from queue import Queue
 from threading import Thread
+
+# Global flag to indicate whether to terminate threads
+terminate_threads_flag = False
+
+# thread-safe int
+function_count_lock = threading.Lock()
+first_count = -1
+base_input = None
+
 ##########################
 ## XML SPECIFIC METHODS ##
 #########################
+def lst_to_str(lst):
+    xml = ""
+    for row in lst:
+        xml += row + '\n'
+    return xml
 
 def duplicate_tags(xml: str):
     data = xml.splitlines()
@@ -178,7 +192,7 @@ def insert_nested_tags(xml: str):
     #print(lst_to_str(data))
     return lst_to_str(data)
 
-def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path):
+def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path, output_queue):
     xml_mutators = [
         rearrange_tags,
         add_root,
@@ -196,85 +210,117 @@ def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path):
     ]
 
     all_possible_mutations = Queue()
+    list_all_possible_mutations = []
     for count in range(10):  # Adjust this count as needed
         for r in range(1, len(xml_mutators) + 1):
             for mutator_combination in itertools.combinations(xml_mutators, r):
                 all_possible_mutations.put(mutator_combination)
 
     # Start generator threads
-    generator_threads = multi_threaded_generator_xml(all_possible_mutations, xml, fuzzed_queue, num_threads=10)
+    generator_threads = multi_threaded_generator_xml(all_possible_mutations, xml, fuzzed_queue, num_threads=20)
 
     # Start harness threads
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=10)
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=20)
 
-    # Wait for all generator and harness threads to complete
-    for thread in generator_threads + harness_threads:
+
+    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=10)
+    
+    for thread in generator_threads + harness_threads + loop_back_threads:
         thread.join()
 
-def multi_threaded_generator_xml(mutator_queue, input_xml, fuzzed_queue, num_threads=5):
+def multi_threaded_generator_xml(mutator_queue, input, fuzzed_queue, num_threads=5):
     threads = []
+
     def thread_target():
-        generator_xml(mutator_queue, input_xml, fuzzed_queue)
+        count = 0
+        start_time = time.time()
+        time_limit = 160  # 150 seconds
+        while True:
+            new_time = time.time()
+            if new_time - start_time > time_limit:
+                return
+            if not mutator_queue.empty():
+                mutator_combination = mutator_queue.get()
+                fuzzed_output = input
+                for mutator in mutator_combination:
+                    fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                fuzzed_queue.put({"input": fuzzed_output, "mutator": mutator_combination})
+            else:
+                return
+
     for _ in range(num_threads):
         thread = threading.Thread(target=thread_target)
         threads.append(thread)
         thread.start()
+
+    
     return threads
 
-def generator_xml(mutator_queue, input_xml, fuzzed_queue):
+
+def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5):
+    threads = []
+
+    def thread_target():
+        run_binary_string(binary_path, fuzzed_queue, output_queue)
+        return
+
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    return threads
+
+def loop_back_generator(input_queue,output_queue, all_mutations):
+    global first_count
+    global base_input
+    start_time = time.time()
+    time_limit = 160  # 150 seconds
+
     while True:
-        if not mutator_queue.empty():
-            mutator_combination = mutator_queue.get()
-            fuzzed_output = input_xml
-            for mutator in mutator_combination:
-                fuzzed_output = mutator(fuzzed_output)
-            fuzzed_queue.put({"input":fuzzed_output,"mutator":mutator_combination})
-        else:
+        
+        new_time = time.time()
+        if new_time - start_time > time_limit:
             return
+        if output_queue.empty():
+            time.sleep(5)
+        with function_count_lock:
+            fuzzed_output = output_queue.get()['input']
+            function_count = output_queue.get()['count']
 
-def multi_threaded_harness(binary_path, fuzzed_queue, num_threads=5):
+            if first_count == -1:
+                first_count = function_count
+                base_input = fuzzed_output
+
+
+        # Take all values from the output queue
+        values_to_process = list(output_queue.get()['input'])
+        values_to_process.append(fuzzed_output)
+        # Mutate each value with the chosen mutator combination
+        mutated_values = []
+        for value_info in values_to_process:
+            mutated_value = random.choice([value_info,base_input])
+            mutator_combination = random.choice(all_mutations)
+
+            for mutator in mutator_combination:
+                try:
+                    mutated_value = mutator(mutated_value)
+                except:
+                    continue
+            mutated_values.append({"input": mutated_value, "mutator": mutator_combination})
+
+        # Put the mutated values back into the queue
+        for mutated_value_info in mutated_values:
+            input_queue.put(mutated_value_info)
+
+def multi_threaded_loop_back_generator(input_queue,output_queue, all_mutations, num_threads=5):
     threads = []
+
     def thread_target():
-        run_binary_and_check_segfault(binary_path, fuzzed_queue)
+        loop_back_generator(input_queue,output_queue, all_mutations)
     for _ in range(num_threads):
         thread = threading.Thread(target=thread_target)
         threads.append(thread)
         thread.start()
+
     return threads
-
-def lst_to_str(lst):
-    xml = ""
-    for row in lst:
-        xml += row + '\n'
-    return xml
-            
-
-
-def run_binary(binary_path: str, q: Queue):
-
-    input_data = q.get()
-
-    p = process(binary_path)
-    p.sendline(input_data.encode())
-
-    try:
-        p = subprocess.run([binary_path], input=input_data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-    except subprocess.CalledProcessError as e:
-        if e.returncode == -11:
-            print(f"An error occurred with exit code: {e.returncode}")
-            print(f"The input the caused the error has been put in bad.txt")
-            sys.exit()
-        else:
-            print(f"An error occurred with exit code: {e.returncode}")
-    print("No errors found")
-
-if __name__ == "__main__":
-    q = Queue()
-    with open('../assignment/xml1.txt', 'r') as f:
-        content = f.read() # pass input on as the file and convert it to content
-        #root = et.fromstring(content)
-    fuzzed_input = insert_nested_tags(content)
-
-    q.put(fuzzed_input)
-    run_binary("../assignment/xml2", q)
-

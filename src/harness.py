@@ -66,3 +66,6 @@ def run_binary_string(binary_path, q,output_q):
                 print(f"Unexpected error: {e}")
         else:
             time.sleep(5)
+
+def run_strings(binary_path):
+    return subprocess.check_output(["/bin/strings", "-s|", "-d", binary_path], stderr=subprocess.PIPE)
