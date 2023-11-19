@@ -49,7 +49,6 @@ def start_json(s: str, binary_path: str):
 
 
 def start_xml(s:str, binary_path: str):
-
     fuzzed_input = Queue()
     fuzzed_output = Queue()
 

@@ -92,7 +92,6 @@ def generate_base_fuzzed_output(s: str, fuzzed_queue, binary_path, output_queue)
                 all_possible_mutations.put(mutator_combination)
                 list_all_possible_mutations.append(mutator_combination)
     
-    print(all_possible_mutations.qsize())
     # Start generator threads
     generator_threads = multi_threaded_generator_csv(all_possible_mutations, s, fuzzed_queue, num_threads=2)
 

@@ -20,7 +20,7 @@ def run_binary_bytes(binary_path, q, output_q):
 
                 # Decode standard error output to get the trace
                 trace_output = process.stderr.decode()
-                if "killed by" in trace_output:
+                if "killed by SIGSEGV " in trace_output:
                     print("Found bad output.")
                     with open('bad.txt', 'wb') as file:
                         file.write(input_data)
@@ -41,7 +41,6 @@ def run_binary_bytes(binary_path, q, output_q):
 def run_binary_string(binary_path, q,output_q):
     start_time = time.time()
     time_limit = 180  # 150 seconds
-    print("Starting harness")
     while True:
         new_time = time.time()
         if new_time - start_time > time_limit:
@@ -51,11 +50,11 @@ def run_binary_string(binary_path, q,output_q):
             try:
                 input_bytes = input_data.encode('utf-8')
                 trace_cmd = f'ltrace {binary_path}'  # Using ltrace
-                process = subprocess.run(trace_cmd, input=input_bytes, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,timeout=5)
+                process = subprocess.run(trace_cmd, input=input_bytes, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
                 # Decode standard error output to get the trace
                 trace_output = process.stderr.decode()
-                if "killed by" in trace_output:
+                if "killed by SIGSEGV" in trace_output:
                     print("Found bad output.")
                     with open('bad.txt', 'w') as file:
                         file.write(input_data)

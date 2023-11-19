@@ -40,16 +40,22 @@ def determine_input_type(input_bytes):
 
     if 'json' in file_type:
         return "JSON"
-    elif 'xml' in file_type:
-        return "XML"
     elif 'csv' in file_type:
         return "CSV"
     elif 'jpeg' in file_type:
         return "JPEG"
     elif 'pdf' in file_type:
         return "PDF"
+    elif 'xml' in file_type:
+        return "XML"
     else:
-        return "Plaintext"
+        # Fallback check for XML
+        try:
+            et.fromstring(input_bytes)
+            return "XML"
+        except et.ParseError:
+            return "Plaintext"
+
 
 def file_exists(file_path: str) -> bool:
     return os.path.isfile(file_path)
