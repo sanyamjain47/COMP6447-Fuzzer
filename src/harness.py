@@ -25,6 +25,10 @@ def run_binary_bytes(binary_path, q, output_q):
                     with open('bad.txt', 'wb') as file:
                         file.write(input_data)
                     sys.exit()
+                elif "killed by " in trace_output:
+                    print("Found a non-segmenatation error.")
+                    with open('bad.txt', 'wb') as file:
+                        file.write(input_data)
                 # Regular expression to match function calls in ltrace output
                 func_call_pattern = re.compile(r'(\w+)\(')
                 function_calls = func_call_pattern.findall(trace_output)
@@ -59,6 +63,10 @@ def run_binary_string(binary_path, q,output_q):
                     with open('bad.txt', 'w') as file:
                         file.write(input_data)
                     sys.exit()
+                elif "killed by " in trace_output:
+                    print("Found a non-segmenatation error.")
+                    with open('bad.txt', 'wb') as file:
+                        file.write(input_data)
                 # Regular expression to match function calls in ltrace output
                 func_call_pattern = re.compile(r'(\w+)\(')
                 function_calls = func_call_pattern.findall(trace_output)
