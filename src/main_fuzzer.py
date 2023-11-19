@@ -7,7 +7,7 @@ from xml_fuzzer import generate_xml_fuzzed_output
 from jpeg_fuzzer import generate_jpeg_fuzzed_output
 from plaintext_fuzzer import generate_plain_fuzzed_output
 from library import ThreadOutput
-from harness import run_strings
+from harness import run_strings, run_binary_and_check_segfault
 
 
 # Corpus contains all the fuzzed inputs which give new code coverage
@@ -47,18 +47,24 @@ def start_jpeg(s: bytes, binary_path: str):
 
 def start_json(s: str, binary_path: str):
     fuzzed_input = Queue()
-    fuzzed_output = Queue()
 
-    fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
-    fuzz_generator_thread.start()
+    keywords = ThreadOutput(target=run_strings, args=(binary_path,))
+    keywords.start()
 
-    jsonfuzz_generator_thread = Thread(target=generate_json_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    # Start generating inputs in a separate thread
+    # START THIS IF NEEDED AFTER
+
+    k = keywords.join().decode().split("|")
+    jsonfuzz_generator_thread = Thread(target=generate_json_fuzzed_output, args=(s, fuzzed_input, k))
     jsonfuzz_generator_thread.start()
 
+    # Run this function in another thread concurrently
+    binary_checker_thread = Thread(target=run_binary_and_check_segfault, args=(binary_path, fuzzed_input))
+    binary_checker_thread.start()
 
     # Wait for both threads to finish
     jsonfuzz_generator_thread.join()
-    fuzz_generator_thread.join()
+    binary_checker_thread.join()
 
 
 def start_xml(s:str, binary_path: str):

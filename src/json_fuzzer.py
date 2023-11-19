@@ -153,13 +153,9 @@ def fstrings(data: PayloadJson, _):
         return data
     key_tup = random.choice(keys_to_check)
     data.set_field(key_tup, "%s%s%s%s")
-    
-def generate_json_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
-    keywords = run_strings(binary_path)
-    keywords = keywords.decode()
 
-    # Now, split the string using '|' as a separator
-    keywords = keywords.split("|")
+
+def generate_json_fuzzed_output(df, q, keywords):
     json_mutator = [
         add_keywords,
         more_keys,
@@ -172,56 +168,15 @@ def generate_json_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
         fstrings,
     ]
 
-    all_possible_mutations = Queue()
-    list_all_possible_mutations = []
-    for count in range(10):
-        for r in range(1, len(json_mutator) + 1):
-            for mutator_combination in itertools.combinations(json_mutator, r):
-                all_possible_mutations.put(mutator_combination)
-                list_all_possible_mutations.append(mutator_combination)
-    
-    # Start generator threads
-    generator_threads = multi_threaded_generator_txt(all_possible_mutations, df, fuzzed_queue,keywords, num_threads=20)
-
-    # Start harness threads
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=20)
-
-
-    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=40)
-    
-    for thread in generator_threads + harness_threads + loop_back_threads:
-        thread.join()
-
-
-
-def multi_threaded_generator_txt(mutator_queue, input, fuzzed_queue, keywords,num_threads=5):
-    threads = []
-
-    def thread_target():
-        count = 0
-        start_time = time.time()
-        time_limit = 160  # 150 seconds
-        while True:
-            new_time = time.time()
-            if new_time - start_time > time_limit:
-                return
-            if not mutator_queue.empty():
-                mutator_combination = mutator_queue.get()
-                fuzzed_output = input
+    for r in range(len(json_mutator)):  # r ranges from 1 to the number of base mutators
+        for mutator_combination in itertools.combinations(json_mutator, r):  # All combinations of size r
+            for _ in range(10):
+                fuzzed_output = PayloadJson(df)
                 for mutator in mutator_combination:
-                    fuzzed_output = mutator(fuzzed_output,keywords)  # Apply each mutator in the combination to the string
-                
-                fuzzed_queue.put({"input": fuzzed_output, "mutator": mutator_combination})
-            else:
-                return
+                    fuzzed_output = mutator(fuzzed_output, keywords)  # Apply each mutator in the combination to the string
+                json_string = str(fuzzed_output)
+                q.put(json_string)
 
-    for _ in range(num_threads):
-        thread = threading.Thread(target=thread_target)
-        threads.append(thread)
-        thread.start()
-
-    
-    return threads
 def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5):
     threads = []
 
