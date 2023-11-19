@@ -1,4 +1,5 @@
 from threading import Thread
+import sys
 
 class ThreadOutput(Thread):
     def __init__(self, *args, **kwargs):

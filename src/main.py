@@ -31,7 +31,6 @@ if __name__ == "__main__":
         # log.info('Going into xml with {}, {}'.format(payload, bin_path) )
         start_plain(payload, bin_path)
     else: 
-
         # log.info('Going into generic with {}, {}'.format(payload, bin_path) )
         start_general(payload, bin_path)
 

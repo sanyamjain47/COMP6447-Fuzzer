@@ -44,7 +44,8 @@ def determine_input_type(input_string):
         csv_reader = csv.reader(input_string.splitlines())
         for _ in csv_reader:
             break  # If reading as CSV succeeds even for one line, it's considered valid
-        return "CSV"
+        if "," in input_string.splitlines()[0]:
+            return "CSV"
     except csv.Error:
         pass
 

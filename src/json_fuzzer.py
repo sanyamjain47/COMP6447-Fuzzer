@@ -11,7 +11,7 @@ from library import PayloadJson
 import random
 
 
-def keywords(data: PayloadJson, keywords):
+def add_keywords(data: PayloadJson, keywords):
     """Strategy 0: keyword Strings
         find a random string field and edit value to keyword string
     """
@@ -39,7 +39,6 @@ def nesting(data: PayloadJson, _):
     for i in range(max_depth):
         data.set_field(f"data{i}", [deepcopy(data.get_data())], update_keys=False)
     return data
-
 
 def long_strings(data: PayloadJson, _):
     """Strategy 3: Long Strings
@@ -137,12 +136,13 @@ def fstrings(data: PayloadJson, _):
         return data
     key_tup = random.choice(keys_to_check)
     data.set_field(key_tup, "%s%s%s%s")
+    return data
     
 
 
 def generate_json_fuzzed_output(df, q, keywords):
     json_mutator = [
-        keywords,
+        add_keywords,
         more_keys,
         nesting,
         long_strings,
