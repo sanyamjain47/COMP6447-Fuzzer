@@ -49,11 +49,16 @@ def start_json(s: str, binary_path: str):
     fuzzed_input = Queue()
     fuzzed_output = Queue()
 
-    keywords = ThreadOutput(target=run_strings, args=(binary_path,))
-    keywords.start()
-    k = keywords.join().decode().split("|")
+    fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    fuzz_generator_thread.start()
 
-    generate_json_fuzzed_output(s, fuzzed_input,binary_path,fuzzed_output, k)
+    jsonfuzz_generator_thread = Thread(target=generate_json_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    jsonfuzz_generator_thread.start()
+
+
+    # Wait for both threads to finish
+    jsonfuzz_generator_thread.join()
+    fuzz_generator_thread.join()
 
 
 def start_xml(s:str, binary_path: str):
