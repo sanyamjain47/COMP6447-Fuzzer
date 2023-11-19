@@ -5,7 +5,7 @@ from csv_fuzzer import generate_csv_fuzzed_output
 from json_fuzzer import generate_json_fuzzed_output
 from xml_fuzzer import generate_xml_fuzzed_output
 from jpeg_fuzzer import generate_jpeg_fuzzed_output
-from plaintext_fuzzer import generate_plaintext_fuzzed_output
+from plaintext_fuzzer import generate_plain_fuzzed_output
 
 # Corpus contains all the fuzzed inputs which give new code coverage
 # corpus = []
@@ -65,6 +65,21 @@ def start_xml(s:str, binary_path: str):
     fuzz_generator_thread.join()
 
 
+def start_txt(s:str, binary_path: str):
+
+    fuzzed_input = Queue()
+    fuzzed_output = Queue()
+
+    fuzz_generator_thread = Thread(target=generate_base_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    fuzz_generator_thread.start()
+
+    txtfuzz_generator_thread = Thread(target=generate_plain_fuzzed_output, args=(s, fuzzed_input,binary_path, fuzzed_output))
+    txtfuzz_generator_thread.start()
+
+
+    # Wait for both threads to finish
+    txtfuzz_generator_thread.join()
+    fuzz_generator_thread.join()
 
 
 # Generic fuzzer for inputs that have not been implemented yet

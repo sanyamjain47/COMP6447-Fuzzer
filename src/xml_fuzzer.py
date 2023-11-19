@@ -215,6 +215,7 @@ def generate_xml_fuzzed_output(xml, fuzzed_queue, binary_path, output_queue):
         for r in range(1, len(xml_mutators) + 1):
             for mutator_combination in itertools.combinations(xml_mutators, r):
                 all_possible_mutations.put(mutator_combination)
+                list_all_possible_mutations.append(mutator_combination)
 
     # Start generator threads
     generator_threads = multi_threaded_generator_xml(all_possible_mutations, xml, fuzzed_queue, num_threads=20)
