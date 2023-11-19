@@ -1,7 +1,7 @@
 import sys
 from pwn import *
 import file_type
-from main_fuzzer import start_csv,start_json, start_general, start_xml
+from main_fuzzer import start_csv,start_json, start_general, start_xml,start_jpeg
 
 if __name__ == "__main__":
     
@@ -27,8 +27,9 @@ if __name__ == "__main__":
     elif type_file == 'XML':
         # log.info('Going into xml with {}, {}'.format(payload, bin_path) )
         start_xml(payload, bin_path)
+    elif type_file == 'JPEG':
+        start_jpeg(payload,bin_path)
     else: 
-
         # log.info('Going into generic with {}, {}'.format(payload, bin_path) )
         start_general(payload, bin_path)
 

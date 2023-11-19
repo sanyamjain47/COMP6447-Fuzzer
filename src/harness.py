@@ -6,7 +6,7 @@ import re
 
 def run_binary_bytes(binary_path, q, output_q):
     start_time = time.time()
-    time_limit = 180  # 150 seconds
+    time_limit = 180  # 180 seconds
 
     while True:
         new_time = time.time()
@@ -33,7 +33,6 @@ def run_binary_bytes(binary_path, q, output_q):
                 print(f"Unexpected error: {e}")
         else:
             time.sleep(5)
-    print("exiting harness")
 
 # Ensure that threads check the terminate_flag regularly and terminate if it's set
 
@@ -66,4 +65,4 @@ def run_binary_string(binary_path, q,output_q):
             except Exception as e:
                 print(f"Unexpected error: {e}")
         else:
-            time.sleep(10)
+            time.sleep(5)

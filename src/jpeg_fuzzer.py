@@ -1,150 +1,262 @@
-import itertools
-from queue import Queue
 import random
-import subprocess
-import sys
-from pwn import *
-from harness import run_binary_and_check_segfault
+import itertools
+import random
+import csv
+import threading
+from harness import run_binary_bytes
 from queue import Queue
-from threading import Thread
-import struct
+import time
 
-##########################
-## JPEG SPECIFIC METHODS ##
-##########################
-def flip_bits(byte_input):
-    ratio = 0.00001  # Example ratio, adjust as needed
-    length = len(byte_input) - 4
-    num_of_flips = int(length * ratio)
-    flip_array = [1, 2, 4, 8, 16, 32, 64, 128]
+# Global flag to indicate whether to terminate threads
+terminate_threads_flag = False
 
-    for _ in range(num_of_flips):
-        idx = random.randint(0, length)
-        mask = random.choice(flip_array)
-        byte_input[idx] ^= mask
+# thread-safe int
+function_count_lock = threading.Lock()
+first_count = -1
+base_input = None
 
-    return byte_input
+# Function to set the terminate flag
+def set_terminate_flag():
+    global terminate_threads_flag
+    terminate_threads_flag = True
 
-def random_header_modification(byte_input):
-    length = len(byte_input) - 4
-    idx = random.randint(0, length)
-    byte_input[idx] ^= random.randint(0, 255)
-    return byte_input
-
-def insert_random_marker(byte_input):
-    markers = [0xd8, 0xe0, 0xe1]  # Example markers, adjust as needed
-    position = random.randint(2, len(byte_input) - 2)
-    marker = random.choice(markers)
-    return byte_input[:position] + bytes([marker]) + byte_input[position:]
-
-
-def swap_segments(byte_input):
-    seg1_start = random.randint(0, len(byte_input) // 2)
-    seg1_end = seg1_start + random.randint(2, 20)
-    seg2_start = random.randint(len(byte_input) // 2, len(byte_input) - 20)
-    seg2_end = seg2_start + random.randint(2, 20)
-
-    byte_input[seg1_start:seg1_end], byte_input[seg2_start:seg2_end] = \
-        byte_input[seg2_start:seg2_end], byte_input[seg1_start:seg1_end]
-
-    return byte_input
-
-def random_block_shuffle(byte_input):
-    block_size = 64  # 8x8 block
-    num_blocks = len(byte_input) // block_size
-    blocks = [byte_input[i * block_size:(i + 1) * block_size] for i in range(num_blocks)]
-    random.shuffle(blocks)
-    return b''.join(blocks)
-
-def random_metadata_insertion(byte_input):
-    exif_header = b'\xff\xe1' + struct.pack('>H', random.randint(2, 100))
-    random_metadata = bytes([random.randint(0, 255) for _ in range(random.randint(1, 20))])
-    return exif_header + random_metadata + byte_input
-
-def mutate_magic(data):
+####################
+## JPEG MUTATIONS ##
+####################
+    
+def mutate_magic( data):
+    # tuple = (byte-size of value, value)
     values = [
-        (1, 0xff), (1, 0x7f), (1, 0),
-        (2, 0xffff), (2, 0),
-        (4, 0xffffffff), (4, 0), (4, 0x80000000), (4, 0x40000000), (4, 0x7fffffff)
+        (1, 0xff),
+        (1, 0x7f),
+        (1, 0),
+        (2, 0xffff),
+        (2, 0),
+        (4, 0xffffffff),
+        (4, 0),
+        (4, 0x80000000),
+        (4, 0x40000000),
+        (4, 0x7fffffff)
     ]
-    length = len(data) - 8
-    idx = randint(0, length)
+    length = len(data) - 8  # make sure we dont write over the EOI marker
+    idx = random.randint(0, length)
     n_size, n = random.choice(values)
-
-    data[idx:idx+n_size] = n.to_bytes(n_size, 'little')
+    # print("magic mutate: ", idx, hex(n), n_size)
+    if n_size == 1:
+        if n == 0xff:			    # 0xFF
+            data[idx] = 0xff        
+        elif n == 0x7f:		        # 0x7F
+            data[idx] = 0x7f
+        elif n == 0:			    # 0x00
+            data[idx] = 0
+    elif n_size == 2:
+        if n == 0xffff:			    # 0xFFFF
+            data[idx] = 0xff
+            data[idx + 1] = 0xff
+        elif n == 0:			    # 0x0000
+            data[idx] = 0
+            data[idx + 1] = 0
+    elif n_size == 4:
+        if n == 0xFFFFFFFF:			# 0xFFFFFFFF
+            data[idx] = 0xff
+            data[idx + 1] = 0xff
+            data[idx + 2] = 0xff
+            data[idx + 3] = 0xff
+        elif n == 0:			    # 0x00000000
+            data[idx] = 0
+            data[idx + 1] = 0
+            data[idx + 2] = 0
+            data[idx + 3] = 0
+        elif n == 0x80000000:		# 0x80000000
+            data[idx] = 0x80
+            data[idx + 1] = 0
+            data[idx + 2] = 0
+            data[idx + 3] = 0
+        elif n == 0x40000000:		# 0x40000000
+            data[idx] = 0x40
+            data[idx + 1] = 0
+            data[idx + 2] = 0
+            data[idx + 3] = 0
+        elif n == 0x7FFFFFFF:		# 0x7FFFFFFF
+            data[idx] = 0x7f
+            data[idx + 1] = 0xff
+            data[idx + 2] = 0xff
+            data[idx + 3] = 0xff
     return data
+      
+    # randomly flip a proportion of bits
 
-def flip_ratio_bits(data, ratio):
-    length = len(data) - 4
-    num_of_flips = int(length * ratio)
-    flip_array = [1, 2, 4, 8, 16, 32, 64, 128]
-
-    for _ in range(num_of_flips):
-        idx = randint(0, length)
+def flipRatioBits( data):
+    length = len(data) - 4 #jpg file format requires SOI and EOI which are the first 2 and last 2 bytes. We don't want to touch them
+    num_of_flips = int(length * 0.1)
+    # print("flip bits ratio: ", ratio, num_of_flips)
+    indexes = []
+    flip_array = [1,2,4,8,16,32,64,128]
+    while len(indexes) < num_of_flips:
+        indexes.append(random.randint(0, length))
+    for x in indexes:
         mask = random.choice(flip_array)
-        data[idx] ^= mask
-
+        data[x] = data[x] ^ mask
+    if isinstance(data,int):
+        print(f" ratio bits {type(data)}")
     return data
-
-def flip_random_bit(data):
-    length = len(data) - 4
-    idx = randint(0, length)
-    flip_array = [1, 2, 4, 8, 16, 32, 64, 128]
+    
+def flipRandomBit( data):
+    # print("flip single bit")
+    length = len(data) - 4 #jpg file format requires SOI and EOI which are the first 2 and last 2 bytes. We don't want to touch them
+    idx = random.randint(0, length)
+    flip_array = [1,2,4,8,16,32,64,128]
     mask = random.choice(flip_array)
-    data[idx] ^= mask
+    data[idx] = data[idx] ^ mask
+
+    return data
+    
+def flipRandomByte( data):
+    # print("flip single byte")
+    length = len(data) - 4 #jpg file format requires SOI and EOI which are the first 2 and last 2 bytes. We don't want to touch them
+    idx = random.randint(0, length)
+    data[idx] = data[idx] ^ 0xff
 
     return data
 
-def flip_random_byte(data):
-    length = len(data) - 4
-    idx = randint(0, length)
-    data[idx] ^= 0xff
-
+def flipRatioBytes( data):
+    length = len(data) - 4 #jpg file format requires SOI and EOI which are the first 2 and last 2 bytes. We don't want to touch them
+    num_of_flips = int(length * 0.2)
+    
+    indexes = set()
+    while len(indexes) < num_of_flips:
+        indexes.add(random.randint(0, length))
+    for idx in indexes:
+        data[idx] = data[idx] ^ 0xff
+    
     return data
 
-
-# Fuzzing generator
-def generator_jpeg(mutator_queue, input_jpeg, fuzzed_queue):
-    while not mutator_queue.empty():
-        mutator_combination = mutator_queue.get()
-        fuzzed_output = input_jpeg[:]
-        for mutator in mutator_combination:
-            fuzzed_output = mutator(fuzzed_output)
-        fuzzed_queue.put({"input": fuzzed_output, "mutator": mutator_combination})
-
-# Thread management for fuzzing
-def multi_threaded_generator_jpeg(mutator_queue, input_jpeg, fuzzed_queue, num_threads=5):
-    threads = [threading.Thread(target=generator_jpeg, args=(mutator_queue, input_jpeg, fuzzed_queue)) for _ in range(num_threads)]
-    for thread in threads:
-        thread.start()
-    return threads
-
-def multi_threaded_harness(binary_path, fuzzed_queue, num_threads=5):
-    threads = [threading.Thread(target=run_binary_and_check_segfault, args=(binary_path, fuzzed_queue)) for _ in range(num_threads)]
-    for thread in threads:
-        thread.start()
-    return threads
-
-# Main fuzzing function
-def generate_jpeg_fuzzed_output(jpeg_path, fuzzed_queue, binary_path):
-    with open(jpeg_path, 'rb') as file:
-        jpeg_bytes = bytearray(file.read())
-
-    jpeg_mutators = [flip_bits, random_header_modification, insert_random_marker, swap_segments, random_block_shuffle, random_metadata_insertion]
+def generate_jpeg_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
+    jpeg_mutator = [
+        flipRandomBit,
+        flipRandomByte,
+        flipRatioBits,
+        flipRatioBytes,
+        mutate_magic
+    ]
     all_possible_mutations = Queue()
-
-    for _ in range(20):
-        for r in range(1, len(jpeg_mutators) + 1):
-            for mutator_combination in itertools.combinations(jpeg_mutators, r):
+    list_all_possible_mutations = []
+    
+    for _ in range(100):
+        for r in range(1, len(jpeg_mutator) + 1):
+            for mutator_combination in itertools.combinations(jpeg_mutator, r):
                 all_possible_mutations.put(mutator_combination)
+                list_all_possible_mutations.append(mutator_combination)
+        
+    # Start generator threads
+    generator_threads = multi_threaded_generator_csv(all_possible_mutations, df, fuzzed_queue, num_threads=20)
 
-    generator_threads = multi_threaded_generator_jpeg(all_possible_mutations, jpeg_bytes, fuzzed_queue, num_threads=20)
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, num_threads=20)
+    # Start harness threads
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=20)
 
-    for thread in generator_threads + harness_threads:
+
+    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=40)
+    
+    for thread in generator_threads + harness_threads + loop_back_threads:
         thread.join()
+    
 
-if __name__ == "__main__":
-    q = Queue()
-    jpeg_path = '../assignment/jpg1.txt'
-    generate_jpeg_fuzzed_output(jpeg_path, q, "../assignment/jpg1")
+def multi_threaded_generator_csv(mutator_queue, input, fuzzed_queue, num_threads=5):
+    threads = []
+
+    def thread_target():
+        count = 0
+        start_time = time.time()
+        time_limit = 160  # 150 seconds
+        while True:
+            new_time = time.time()
+            if new_time - start_time > time_limit:
+                return
+            if not mutator_queue.empty():
+                mutator_combination = mutator_queue.get()
+                fuzzed_output = input
+                for mutator in mutator_combination:
+                    fuzzed_output = mutator(fuzzed_output)  # Apply each mutator in the combination to the string
+                if isinstance(fuzzed_output,int):
+                    print(type(fuzzed_output))
+                fuzzed_queue.put({"input": fuzzed_output, "mutator": mutator_combination})
+            else:
+                return
+
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    
+    return threads
+
+
+def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5):
+    threads = []
+
+    def thread_target():
+        run_binary_bytes(binary_path, fuzzed_queue, output_queue)
+        return
+
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    return threads
+
+def loop_back_generator(input_queue,output_queue, all_mutations):
+    global first_count
+    global base_input
+    start_time = time.time()
+    time_limit = 160  # 150 seconds
+
+    while True:
+        fuzzed_output = None
+        new_time = time.time()
+        if new_time - start_time > time_limit:
+            return
+        if output_queue.empty():
+            time.sleep(5)
+        with function_count_lock:
+            fuzzed_output = output_queue.get()['input']
+            function_count = output_queue.get()['count']
+
+            if first_count == -1:
+                first_count = function_count
+                base_input = fuzzed_output
+
+        # Take all values from the output queue
+        values_to_process = []
+        if fuzzed_output is not None:
+            values_to_process.append(fuzzed_output)
+        values_to_process.append(output_queue.get()['input'])
+        # Mutate each value with the chosen mutator combination
+        mutated_values = []
+        for value_info in values_to_process:
+            mutated_value = random.choice([value_info, base_input])
+            mutator_combination = random.choice(all_mutations)
+            for mutator in mutator_combination:
+                try:
+                    mutated_value = mutator(mutated_value)
+                except Exception as e:
+                    print(f"Unexpected error loop: {e}")
+
+            mutated_values.append({"input": mutated_value, "mutator": mutator_combination})
+
+        # Put the mutated values back into the queue
+        for mutated_value_info in mutated_values:
+            input_queue.put(mutated_value_info)
+
+def multi_threaded_loop_back_generator(input_queue,output_queue, all_mutations, num_threads=5):
+    threads = []
+
+    def thread_target():
+        loop_back_generator(input_queue,output_queue, all_mutations)
+    for _ in range(num_threads):
+        thread = threading.Thread(target=thread_target)
+        threads.append(thread)
+        thread.start()
+
+    return threads
