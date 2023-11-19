@@ -21,7 +21,9 @@ def run_binary_bytes(binary_path, q, output_q):
                 # Decode standard error output to get the trace
                 trace_output = process.stderr.decode()
                 if "killed by" in trace_output:
-                    print("FOUND ITTT")
+                    print("Found bad output.")
+                    with open('bad.txt', 'wb') as file:
+                        file.write(input_data)
                     sys.exit()
                 # Regular expression to match function calls in ltrace output
                 func_call_pattern = re.compile(r'(\w+)\(')
@@ -54,7 +56,9 @@ def run_binary_string(binary_path, q,output_q):
                 # Decode standard error output to get the trace
                 trace_output = process.stderr.decode()
                 if "killed by" in trace_output:
-                    print("FOUND ITTT")
+                    print("Found bad output.")
+                    with open('bad.txt', 'w') as file:
+                        file.write(input_data)
                     sys.exit()
                 # Regular expression to match function calls in ltrace output
                 func_call_pattern = re.compile(r'(\w+)\(')
