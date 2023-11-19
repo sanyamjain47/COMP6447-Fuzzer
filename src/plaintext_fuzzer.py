@@ -38,6 +38,7 @@ def increment_random_byte(s: str, _):
 def decrement_random_byte(s: str, _):
     if not s:
         return s
+    pos = randint(0, len(s)-1)
     return s[:pos] + chr(ord(s[pos])-1) + s[pos+1:]
 
 def bit_flip(s: str, _):
@@ -77,7 +78,7 @@ def extend(s: str, _):
 def double_it(s: str, _):
     return s + s
 
-def generate_plain_fuzzed_output(df, q, binary_path):
+def generate_plain_fuzzed_output(df, q, keywords):
     plain_mutator = [
         decrement_random_byte,
         increment_random_byte,
@@ -99,6 +100,6 @@ def generate_plain_fuzzed_output(df, q, binary_path):
             for _ in range(10):
                 fuzzed_output = copy(df)
                 for mutator in mutator_combination:
-                    fuzzed_output = mutator(fuzzed_output, binary_path)  # Apply each mutator in the combination to the string
+                    fuzzed_output = mutator(fuzzed_output, keywords)  # Apply each mutator in the combination to the string
                 plain_string = str(fuzzed_output)
                 q.put(plain_string)
