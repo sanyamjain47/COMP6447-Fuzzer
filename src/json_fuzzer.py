@@ -9,16 +9,11 @@ from copy import deepcopy
 
 from library import PayloadJson
 import random
-import random
 import itertools
-import random
-import csv
 import threading
 from harness import run_binary_string
 from queue import Queue
-from threading import Thread
 import time
-import string
 # Global flag to indicate whether to terminate threads
 terminate_threads_flag = False
 
@@ -32,7 +27,7 @@ def set_terminate_flag():
     global terminate_threads_flag
     terminate_threads_flag = True
 
-def keywords(data: PayloadJson, keywords):
+def add_keywords(data: PayloadJson, keywords):
     """Strategy 0: keyword Strings
         find a random string field and edit value to keyword string
     """
@@ -161,9 +156,9 @@ def fstrings(data: PayloadJson, _):
     
 
 
-def generate_json_fuzzed_output(df, fuzzed_queue, binary_path, output_queue, keywords_param):
+def generate_json_fuzzed_output(df, fuzzed_queue, binary_path, output_queue, keywords):
     json_mutator = [
-        keywords,
+        add_keywords,
         more_keys,
         nesting,
         long_strings,
@@ -197,7 +192,7 @@ def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=
 
     return threads
 
-def loop_back_generator(input_queue,output_queue, all_mutations):
+def loop_back_generator(input_queue,output_queue, all_mutations, keywords):
     global first_count
     global base_input
     start_time = time.time()
@@ -230,7 +225,7 @@ def loop_back_generator(input_queue,output_queue, all_mutations):
 
             for mutator in mutator_combination:
                 try:
-                    mutated_value = mutator(mutated_value)
+                    mutated_value = mutator(mutated_value, keywords)
                 except:
                     continue
             mutated_values.append({"input": mutated_value, "mutator": mutator_combination})
@@ -239,11 +234,11 @@ def loop_back_generator(input_queue,output_queue, all_mutations):
         for mutated_value_info in mutated_values:
             input_queue.put(mutated_value_info)
 
-def multi_threaded_loop_back_generator(input_queue,output_queue, all_mutations, num_threads=5):
+def multi_threaded_loop_back_generator(input_queue,output_queue, all_mutations, keywords, num_threads=5):
     threads = []
 
     def thread_target():
-        loop_back_generator(input_queue,output_queue, all_mutations)
+        loop_back_generator(input_queue,output_queue, all_mutations, keywords)
     for _ in range(num_threads):
         thread = threading.Thread(target=thread_target)
         threads.append(thread)
