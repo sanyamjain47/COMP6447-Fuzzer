@@ -12,7 +12,6 @@ import string
 ## CSV SPECIFIC METHODS ##
 ##########################
 
-
 def read_csv_to_list_of_lists(file_path):
     data = []
     try:
@@ -199,21 +198,29 @@ def generate_csv_fuzzed_output(df, fuzzed_queue, binary_path, output_queue):
     
     print(all_possible_mutations.qsize())
     # Start generator threads
-    generator_threads = multi_threaded_generator_csv(all_possible_mutations, df, fuzzed_queue, num_threads=5)
+    generator_threads = multi_threaded_generator_csv(all_possible_mutations, df, fuzzed_queue, num_threads=20)
 
     # Start harness threads
-    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=5)
+    harness_threads = multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=20)
 
 
-    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=5)
-
+    loop_back_threads = multi_threaded_loop_back_generator(fuzzed_queue,output_queue, list_all_possible_mutations, num_threads=10)
+    
+    for thread in generator_threads + harness_threads + loop_back_threads:
+        thread.join()
     
 
 def multi_threaded_generator_csv(mutator_queue, input, fuzzed_queue, num_threads=5):
     threads = []
 
     def thread_target():
+        count = 0
+        start_time = time.time()
+        time_limit = 160  # 150 seconds
         while True:
+            new_time = time.time()
+            if new_time - start_time > time_limit:
+                return
             if not mutator_queue.empty():
                 mutator_combination = mutator_queue.get()
                 fuzzed_output = input
@@ -222,8 +229,7 @@ def multi_threaded_generator_csv(mutator_queue, input, fuzzed_queue, num_threads
                 csv_string = list_of_lists_to_csv(fuzzed_output)
                 fuzzed_queue.put({"input": csv_string, "mutator": mutator_combination})
             else:
-                break
-        print("exiting generator")
+                return
 
     for _ in range(num_threads):
         thread = threading.Thread(target=thread_target)
@@ -239,6 +245,7 @@ def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=
 
     def thread_target():
         run_binary_string(binary_path, fuzzed_queue, output_queue)
+        return
 
     for _ in range(num_threads):
         thread = threading.Thread(target=thread_target)
@@ -250,7 +257,16 @@ def multi_threaded_harness(binary_path, fuzzed_queue, output_queue, num_threads=
 def loop_back_generator(input_queue,output_queue, all_mutations):
     global first_count
     global base_input
-    while not terminate_threads_flag and not output_queue.empty():
+    start_time = time.time()
+    time_limit = 160  # 150 seconds
+
+    while True:
+        
+        new_time = time.time()
+        if new_time - start_time > time_limit:
+            return
+        if output_queue.empty():
+            time.sleep(5)
         with function_count_lock:
             fuzzed_output = output_queue.get()['input']
             function_count = output_queue.get()['count']
@@ -285,7 +301,6 @@ def multi_threaded_loop_back_generator(input_queue,output_queue, all_mutations, 
 
     def thread_target():
         loop_back_generator(input_queue,output_queue, all_mutations)
-
     for _ in range(num_threads):
         thread = threading.Thread(target=thread_target)
         threads.append(thread)
